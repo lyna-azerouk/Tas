@@ -16,7 +16,7 @@ let rec print_term (t : pterm) : string =
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
     |Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
     |List  ti ->  "["^ String.concat " " (List.map print_term ti)^"]"
-    |Cons (t1, t2) -> "(cons "^(print_term t1)^(print_term t2)^")"
+    |Cons (t1, t2) -> "(cons "^(print_term t1)^" "^(print_term t2)^")"
     |Hd t1 ->"hd(" ^(print_term t1) ^")"
     |Tail t1 -> "tail(" ^(print_term t1) ^")"
     
@@ -70,7 +70,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (*tv est de type ptype*) (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
   | App (t1, t2) -> let nv : string = nouvelle_var () in (* why nv*)
-      let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in 
+      let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in  (* le type  attendue de de t1 est un Arr(Var nv), ty) *)
       let eq2 : equa = genere_equa t2 (Var nv) e in
       eq1 @ eq2
   | Abs (x, t) -> let nv1 : string = nouvelle_var () 
@@ -83,12 +83,13 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   | Sou (t1, t2) -> let eq1: equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in 
       (ty, Nat)::(eq1 @ eq2)
-  |Cons (t1, t2) -> let nv : string = nouvelle_var () in
-    let eq1 : equa= genere_equa t1 (Var nv) e  in 
-     let eq2 : equa =genere_equa  t2 ty e  in 
-      (ty, (Var nv))::(eq1@ eq2 ) 
-  |Hd t1 -> let eq : equa=genere_equa t1 ty e  in 
+  |Hd t1 -> let nhv : string = nouvelle_var() in 
+    let eq : equa=genere_equa t1 (Arr (Var nhv, ty)) e  in 
     eq
+  |Cons (t1, t2) -> let nv : string = nouvelle_var () in
+    let eq1 : equa= genere_equa t1  (Arr (Var nv, ty)) e  in 
+     let eq2 : equa =genere_equa  t2  (Arr (Var nv, ty)) e  in 
+      (eq1@ eq2 ) 
 
     
 
@@ -165,21 +166,28 @@ let ex_omega : pterm = App (Abs ("x", App (Var "x", Var "x")), Abs ("y", App (Va
 let inf_ex_omega : string = inference ex_omega
 let ex_nat3 : pterm = App (ex_nat2, ex_id)
 let inf_ex_nat3 : string = inference ex_nat3
+let ex_sous : pterm =   Abs ("x", Sou( Var "x", Var "x"))
+let ex_sous_string : string =  inference ex_sous
+let ex_cons : pterm =   Abs ("x", Cons( Abs ("x", Sou( Var "x", Var "x")), Var "x"))
+let ex_cons_string : string =  inference ex_cons 
+
 
 let main () =
- print_endline "======================";
- print_endline inf_ex_id;
- print_endline "======================";
- print_endline inf_ex_k;
- print_endline "======================";
- print_endline inf_ex_s;
- print_endline "======================";
- print_endline inf_ex_omega;
- print_endline "======================";
- print_endline inf_ex_nat1;
- print_endline "======================";
- print_endline inf_ex_nat2;
- print_endline "======================";
- print_endline inf_ex_nat3
-
-let _ = main ()
+  print_endline "======================";
+  print_endline inf_ex_id;
+  print_endline "======================";
+  print_endline inf_ex_k;
+  print_endline "======================";
+  print_endline inf_ex_s;
+  print_endline "======================";
+  print_endline inf_ex_omega;
+  print_endline "======================";
+  print_endline inf_ex_nat1;
+  print_endline "======================";
+  print_endline inf_ex_nat2;
+  print_endline "======================";
+  print_endline ex_sous_string;
+  print_endline "======================";
+  print_endline ex_cons_string
+ 
+ let _ = main ()
