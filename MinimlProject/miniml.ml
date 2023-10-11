@@ -1,7 +1,7 @@
 (* Termes *)
-type pterm = Var of string | App of pterm * pterm | Abs of string * pterm | N of int | Add of pterm * pterm | Sou of pterm * pterm |List of pterm list |Cons  of pterm * pterm | Hd of  pterm | Tail of  pterm
+type pterm = Var of string | App of pterm * pterm | Abs of string * pterm | N of int | Add of pterm * pterm | Sou of pterm * pterm |ListP of pterm list |Cons  of pterm * pterm | Hd of  pterm | Tail of  pterm
 (* Types *) 
-type ptype = Var of string | Arr of ptype * ptype | Nat  (* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
+type ptype = Var of string | Arr of ptype * ptype | Nat | Tliste of ptype(* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
 (* Environnements de typage *) 
 type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
 (* Listes d'équations *) 
@@ -15,7 +15,7 @@ let rec print_term (t : pterm) : string =
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
     |Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
-    |List  ti ->  "["^ String.concat " " (List.map print_term ti)^"]"
+    |ListP  ti ->  "["^ String.concat "; " (List.map print_term ti)^"]"
     |Cons (t1, t2) -> "(cons "^(print_term t1)^" "^(print_term t2)^")"
     |Hd t1 ->"hd(" ^(print_term t1) ^")"
     |Tail t1 -> "tail(" ^(print_term t1) ^")"
@@ -27,7 +27,9 @@ let rec print_type (t : ptype) : string =
   match t with
     Var x -> x
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
-  | Nat -> "Nat" 
+  | Nat -> "Nat"
+  |Tliste l -> "[" ^ print_type l ^ "]"
+
 
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    
@@ -50,6 +52,7 @@ let rec appartient_type (v : string) (t : ptype) : bool =
   match t with
     Var v1 when v1 = v -> true
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
+  |Tliste l ->  appartient_type  v  l
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -59,6 +62,7 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
   | Var v2 -> Var v2
   | Arr (t1, t2) -> Arr (substitue_type t1 v t0, substitue_type t2 v t0) 
   | Nat -> Nat 
+  |Tliste l -> Tliste(substitue_type l v t0)
 
 (* remplace une variable par un type dans une liste d'équations*)
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
@@ -83,15 +87,18 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   | Sou (t1, t2) -> let eq1: equa = genere_equa t1 Nat e in
       let eq2 : equa = genere_equa t2 Nat e in 
       (ty, Nat)::(eq1 @ eq2)
-  |Hd t1 -> let nhv : string = nouvelle_var() in 
-    let eq : equa=genere_equa t1 (Arr (Var nhv, ty)) e  in 
-    eq
+  |Tail t1 -> let nhv : string = nouvelle_var() in 
+    let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
+    (ty, (Tliste (Var nhv)))::eq
+  |ListP t -> let nhv: string =nouvelle_var() in 
+    (ty, Tliste(Var nhv))::List.concat(List.map(function element_of_list -> genere_equa element_of_list (Var nhv) e) t)
   |Cons (t1, t2) -> let nv : string = nouvelle_var () in
-    let eq1 : equa= genere_equa t1  (Arr (Var nv, ty)) e  in 
-     let eq2 : equa =genere_equa  t2  (Arr (Var nv, ty)) e  in 
-      (eq1@ eq2 ) 
-
-    
+    let eq1 : equa= genere_equa t1 (Var nv) e in 
+     let eq2 : equa =genere_equa  t2 (Tliste (Var nv)) e in 
+      (ty,(Tliste (Var nv)))::(eq1@ eq2) 
+  |Hd t1 -> let nhv : string = nouvelle_var() in 
+      let eq : equa=genere_equa t1  (Tliste(Var nhv)) e  in 
+        (ty , (Var nhv))::eq
 
 
 exception Echec_unif of string      
@@ -168,8 +175,16 @@ let ex_nat3 : pterm = App (ex_nat2, ex_id)
 let inf_ex_nat3 : string = inference ex_nat3
 let ex_sous : pterm =   Abs ("x", Sou( Var "x", Var "x"))
 let ex_sous_string : string =  inference ex_sous
-let ex_cons : pterm =   Abs ("x", Cons( Abs ("x", Sou( Var "x", Var "x")), Var "x"))
-let ex_cons_string : string =  inference ex_cons 
+let ex_cons : pterm =   Abs ("x", Cons(Abs ("x", Sou( Var "x", Var "x")), Var "x"))
+let ex_cons_string : string =  inference ex_cons
+let ex_listP : pterm = Abs("x", ListP [ex_sous; ex_sous])
+let ex_listP_string  : string = inference  ex_listP
+let ex_hd : pterm =  Abs ("x", Hd ex_listP)
+let ex_hd_string  : string = inference  ex_hd
+let ex_Tail : pterm =  Abs ("x", Tail ex_listP)
+let ex_Tail_string  : string = inference  ex_Tail
+
+
 
 
 let main () =
@@ -186,8 +201,18 @@ let main () =
   print_endline "======================";
   print_endline inf_ex_nat2;
   print_endline "======================";
+  print_endline inf_ex_nat3;
+  print_endline "======================";
   print_endline ex_sous_string;
   print_endline "======================";
-  print_endline ex_cons_string
+  print_endline ex_cons_string;
+  print_endline "======================";
+  print_endline ex_listP_string;
+  print_endline "======================";
+  print_endline ex_hd_string
+  
  
  let _ = main ()
+
+ 
+
