@@ -1,5 +1,19 @@
+type 'a liste = Vide | Cons of 'a * 'a liste
+
 (* Termes *)
-type pterm = Var of string | App of pterm * pterm | Abs of string * pterm | N of int | Add of pterm * pterm | Sou of pterm * pterm |ListP of pterm list |Cons  of pterm * pterm | Hd of  pterm | Tail of  pterm
+type pterm = Var of string
+ | App of pterm * pterm 
+ | Abs of string * pterm 
+ | N of int 
+ | Add of pterm * pterm 
+ | Sou of pterm * pterm 
+ | ListP of pterm liste 
+ | Cons  of pterm * pterm 
+ | Hd of  pterm 
+ | Tail of  pterm  
+ | Izte of pterm  * pterm * pterm 
+ | Iete of pterm * pterm * pterm 
+
 (* Types *) 
 type ptype = Var of string | Arr of ptype * ptype | Nat | Tliste of ptype(* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
 (* Environnements de typage *) 
@@ -7,21 +21,29 @@ type env = (string * ptype) list  (* liste de type de chaque variable  (var , pt
 (* Listes d'équations *) 
 type equa = (ptype * ptype) list (* liste des equations*)
 (* pretty printer de termes*)     
-let rec print_term (t : pterm) : string =
+let rec print_term_liste t =
+  let rec aux = function  
+        Vide ->""
+        |Cons (t1, t2)-> (print_term t1)^", "^(aux t2) in 
+        "["^ aux  t ^"]"
+       
+and print_term (t : pterm) : string =
   match t with
     Var x -> x
-    | App (t1, t2) -> "(" ^ (print_term t1) ^" "^ (print_term t2) ^ ")"
+    | App (t1, t2) -> "(" ^ (print_term t1) ^" "^ (print_term t2) ^ ")"   
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
     |Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
-    |ListP  ti ->  "["^ String.concat "; " (List.map print_term ti)^"]"
-    |Cons (t1, t2) -> "(cons "^(print_term t1)^" "^(print_term t2)^")"
+    |Cons (t1, t2) -> "(cons "^(print_term t1)^" "^(print_term t2)^")" 
     |Hd t1 ->"hd(" ^(print_term t1) ^")"
     |Tail t1 -> "tail(" ^(print_term t1) ^")"
-    
+    |Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
+    |Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
+    |ListP  ti -> print_term_liste ti
   
 
+    
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
   match t with
@@ -70,6 +92,14 @@ let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
 
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
+let map_liste (l : pterm liste) ty e f =
+  let rec aux_map l ty e f =
+    match l with
+    | Vide -> let nhv : string = nouvelle_var() in
+              [(ty, Tliste(Var nhv))]
+    | Cons (l, ls) -> (f l ty e) @ (aux_map ls ty e f)
+            in aux_map l ty e f
+
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (*tv est de type ptype*) (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
@@ -90,16 +120,19 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   |Tail t1 -> let nhv : string = nouvelle_var() in 
     let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
     (ty, (Tliste (Var nhv)))::eq
-  |ListP t -> let nhv: string =nouvelle_var() in 
-    (ty, Tliste(Var nhv))::List.concat(List.map(function element_of_list -> genere_equa element_of_list (Var nhv) e) t)
-  |Cons (t1, t2) -> let nv : string = nouvelle_var () in
+  |ListP l-> map_liste  l ty e genere_equa
+  |Cons (t1, t2) -> let nv : string = nouvelle_var () in  (* to do or not?*) 
     let eq1 : equa= genere_equa t1 (Var nv) e in 
      let eq2 : equa =genere_equa  t2 (Tliste (Var nv)) e in 
-      (ty,(Tliste (Var nv)))::(eq1@ eq2) 
+     (ty,(Tliste (Var nv)))::(eq1@ eq2) 
   |Hd t1 -> let nhv : string = nouvelle_var() in 
       let eq : equa=genere_equa t1  (Tliste(Var nhv)) e  in 
         (ty , (Var nhv))::eq
-
+  |Izte (condition, t1, t2) -> let nvh: string =nouvelle_var() in 
+      let cond: equa =genere_equa condition Nat e in 
+        let eq1: equa= genere_equa t1  (Var nvh) e in   (* what is the type expected of t1*)
+         let eq2: equa =genere_equa t2 (Var nvh) e in 
+          (cond@eq1@eq2)
 
 exception Echec_unif of string      
 
@@ -177,7 +210,7 @@ let ex_sous : pterm =   Abs ("x", Sou( Var "x", Var "x"))
 let ex_sous_string : string =  inference ex_sous
 let ex_cons : pterm =   Abs ("x", Cons(Abs ("x", Sou( Var "x", Var "x")), Var "x"))
 let ex_cons_string : string =  inference ex_cons
-let ex_listP : pterm = Abs("x", ListP [ex_sous; ex_sous])
+let ex_listP : pterm = Abs("x", ListP (Cons (Var "x", Vide)))
 let ex_listP_string  : string = inference  ex_listP
 let ex_hd : pterm =  Abs ("x", Hd ex_listP)
 let ex_hd_string  : string = inference  ex_hd
