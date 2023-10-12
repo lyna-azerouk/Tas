@@ -1,3 +1,5 @@
+module StringMap = Map.Make(String)
+
 type 'a liste = Vide | Cons of 'a * 'a liste
 
 (* Termes *)
@@ -7,8 +9,7 @@ type pterm = Var of string
  | N of int 
  | Add of pterm * pterm 
  | Sou of pterm * pterm 
- | ListP of pterm liste 
- | Cons  of pterm * pterm 
+ | ListP of pterm liste
  | Hd of  pterm 
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
@@ -19,11 +20,11 @@ type ptype = Var of string | Arr of ptype * ptype | Nat | Tliste of ptype(* Arr 
 (* Environnements de typage *) 
 type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
 (* Listes d'équations *) 
-type equa = (ptype * ptype) list (* liste des equations*)
+type equa = (ptype * ptype) list (* liste de couples de types*)
 (* pretty printer de termes*)     
 let rec print_term_liste t =
   let rec aux = function  
-        Vide ->""
+        Vide ->"nil"
         |Cons (t1, t2)-> (print_term t1)^", "^(aux t2) in 
         "["^ aux  t ^"]"
        
@@ -34,13 +35,12 @@ and print_term (t : pterm) : string =
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
-    |Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
-    |Cons (t1, t2) -> "(cons "^(print_term t1)^" "^(print_term t2)^")" 
-    |Hd t1 ->"hd(" ^(print_term t1) ^")"
-    |Tail t1 -> "tail(" ^(print_term t1) ^")"
-    |Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
-    |Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
-    |ListP  ti -> print_term_liste ti
+    | Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
+    | Hd t1 ->"hd(" ^(print_term t1) ^")"
+    | Tail t1 -> "tail(" ^(print_term t1) ^")"
+    | Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
+    | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
+    | ListP  ti -> print_term_liste ti
   
 
     
@@ -50,7 +50,7 @@ let rec print_type (t : ptype) : string =
     Var x -> x
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
   | Nat -> "Nat"
-  |Tliste l -> "[" ^ print_type l ^ "]"
+  | Tliste l -> "[" ^ print_type l ^ "]"
 
 
 (* générateur de noms frais de variables de types *)
@@ -90,6 +90,64 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
   List.map (fun (x, y) -> (substitue_type x v t0, substitue_type y v t0)) e
 
+(*alpha converstion*)
+let rec alpha_conv(l : pterm) (orig: string) (new_var :string ): pterm =
+  match l with
+    Var variable_to_replace when variable_to_replace = orig -> (Var new_var)
+  | N value->(N value)
+  | App(t1, t2) ->App(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
+  | Abs(s, t2)  when s = orig -> Abs(new_var, alpha_conv t2 orig new_var)
+  | Add(t1, t2) ->Add(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
+  | Sou(t1, t2) ->Sou(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
+  | ListP l ->match l with 
+             |Vide ->ListP(Vide)
+             |Cons (l1, ls)-> ListP(Cons((alpha_conv l1 orig new_var), alpha_conv_list ls  orig new_var))
+
+  and alpha_conv_list (lst : pterm liste) (orig : string) (new_var : string) : pterm liste =
+             match lst with
+             | Vide -> Vide
+             | Cons (l1, ls) ->
+               let new_l1 = alpha_conv l1 orig new_var in
+               let new_ls = alpha_conv_list ls orig new_var in
+               Cons (new_l1, new_ls)
+
+(*alpha converstion Bis*)
+let rec alpha_conv_bis(l : pterm) acc: pterm =
+  match l with
+  | Var variable_to_replace ->
+    (match acc with
+    | [] ->
+        let nv = nouvelle_var () in
+        Var nv
+    | (var, new_var) :: rest ->
+        if var = variable_to_replace then
+          Var new_var
+        else
+          Var (nouvelle_var ()))  (* Using nouvelle_var() to generate a new variable *)
+  | N value -> N value
+  | Abs(s, t2) -> 
+    (match acc with
+    |[] -> let nv= nouvelle_var() in 
+           (alpha_conv_bis (Abs(nv, t2)) [(s, nv)]);
+    |(s, value)::_->Abs(value, alpha_conv_bis t2 acc)
+    |(_, value)::rest->(alpha_conv_bis (Abs(s, t2)) rest))
+  | App(t1, t2) ->App(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  | Add(t1, t2) ->Add(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  | Sou(t1, t2) ->Sou(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  (*| ListP l ->match l with 
+             |Vide ->ListP(Vide)
+             |Cons (l1, ls)-> ListP(Cons((alpha_conv l1 acc), alpha_conv_list ls acc))
+  and alpha_conv_list (lst : pterm liste) acc : pterm liste =
+             match lst with
+             | Vide -> Vide
+             | Cons (l1, ls) ->
+               let new_l1 = alpha_conv l1 orig new_var in
+               let new_ls = alpha_conv_list ls orig new_var in
+               Cons (new_l1, new_ls)
+*)
+
+
+               
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
 let map_liste (l : pterm liste) ty e f =
@@ -97,8 +155,10 @@ let map_liste (l : pterm liste) ty e f =
     match l with
     | Vide -> let nhv : string = nouvelle_var() in
               [(ty, Tliste(Var nhv))]
-    | Cons (l, ls) -> (f l ty e) @ (aux_map ls ty e f)
+    | Cons (l, ls) -> let nhv : string = nouvelle_var() in
+      (ty, Tliste(Var nhv))::(f l (Var nhv) e)@(aux_map ls (Tliste(Var nhv)) e f)
             in aux_map l ty e f
+
 
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
@@ -121,29 +181,26 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
     let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
     (ty, (Tliste (Var nhv)))::eq
   |ListP l-> map_liste  l ty e genere_equa
-  |Cons (t1, t2) -> let nv : string = nouvelle_var () in  (* to do or not?*) 
-    let eq1 : equa= genere_equa t1 (Var nv) e in 
-     let eq2 : equa =genere_equa  t2 (Tliste (Var nv)) e in 
-     (ty,(Tliste (Var nv)))::(eq1@ eq2) 
   |Hd t1 -> let nhv : string = nouvelle_var() in 
-      let eq : equa=genere_equa t1  (Tliste(Var nhv)) e  in 
+      let eq : equa=genere_equa t1  (Tliste(Var nhv)) e in 
         (ty , (Var nhv))::eq
-  |Izte (condition, t1, t2) -> let nvh: string =nouvelle_var() in 
-      let cond: equa =genere_equa condition Nat e in 
-        let eq1: equa= genere_equa t1  (Var nvh) e in   (* what is the type expected of t1*)
-         let eq2: equa =genere_equa t2 (Var nvh) e in 
-          (cond@eq1@eq2)
+  |Izte (condition, t1, t2) ->let nvh1: string =nouvelle_var() in 
+      let nvh2: string =nouvelle_var() in 
+        let cond: equa =genere_equa condition Nat e in 
+          let eq1: equa =genere_equa t1 ty e in   (* what is the type expected of t1*)
+          let eq2: equa =genere_equa t2 ty e in 
+            (cond@eq1@eq2)
 
 exception Echec_unif of string      
 
 (* zipper d'une liste d'équations *)
-type equa_zip = equa * equa  (* list((ptype * ptype)) * list((ptype * ptype)) *)
+type equa_zip = equa * equa  (*(((ptype * ptype)list *  (ptype * ptype)list))===> ([(type1, type2)], [(type3, type4)]* )*) 
   
 (* rembobine le zipper *)
 let rec rembobine (e : equa_zip) =
   match e with
     ([], _) -> e
-  | (c::e1, e2) -> (e1, c::e2)
+  | (c::e1, e2) -> (e1, c::e2) (* ([(type1, type2), .....] [(type3, type4)] ===>([...], [(type1, type2)::(type3, type4)])*)
 
 (* remplace unee variable par un type dans un zipper d'équations *)
 let substitue_type_zip (e : equa_zip) (v : string) (t0 : ptype) : equa_zip =
@@ -158,7 +215,7 @@ let rec trouve_but (e : equa_zip) (but : string) =
   | (_, (t, Var v)::_) when v = but -> t 
   | (e1, c::e2) -> trouve_but (c::e1, e2) but 
                      
-(* résout un système d'équations *) 
+(* résout un système d'équations *)  (*(((ptype * ptype)list *  (ptype * ptype)list))===> ([(type1, type2)], [(type3, type4)]* )*) 
 let rec unification (e : equa_zip) (but : string) : ptype = 
   match e with 
     (* on a passé toutes les équations : succes *)
@@ -182,7 +239,8 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types nat à gauche pas à droite : échec *)
   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
     (* types à droite pas à gauche : échec *)
-  | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
+  | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+  |(e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
                                        
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =
@@ -206,19 +264,21 @@ let ex_omega : pterm = App (Abs ("x", App (Var "x", Var "x")), Abs ("y", App (Va
 let inf_ex_omega : string = inference ex_omega
 let ex_nat3 : pterm = App (ex_nat2, ex_id)
 let inf_ex_nat3 : string = inference ex_nat3
-let ex_sous : pterm =   Abs ("x", Sou( Var "x", Var "x"))
+let ex_sous : pterm =    Sou((N 3), (N 3))
 let ex_sous_string : string =  inference ex_sous
-let ex_cons : pterm =   Abs ("x", Cons(Abs ("x", Sou( Var "x", Var "x")), Var "x"))
-let ex_cons_string : string =  inference ex_cons
-let ex_listP : pterm = Abs("x", ListP (Cons (Var "x", Vide)))
-let ex_listP_string  : string = inference  ex_listP
-let ex_hd : pterm =  Abs ("x", Hd ex_listP)
+let ex_listP1 : pterm = ListP (Cons( (N 3), Cons (ex_sous, Vide)))
+let ex_listP2 : pterm = ListP (Cons( (N 3), Cons (ex_listP1, Vide)))
+let ex_listP_string  : string = inference  ex_listP1
+let ex_hd : pterm =  Hd(ex_listP1)
 let ex_hd_string  : string = inference  ex_hd
-let ex_Tail : pterm =  Abs ("x", Tail ex_listP)
+let ex_Tail : pterm =  Tail ex_listP1
 let ex_Tail_string  : string = inference  ex_Tail
-
-
-
+let ex_izeo : pterm= Izte ((N 0), ex_listP1, ex_listP1)
+let ex_zero_string : string = inference ex_izeo
+let convertie : pterm = alpha_conv ex_nat1  "x" "y"
+let convertie_string : string = inference convertie
+let convertie_bis : pterm = alpha_conv_bis ex_nat1  []
+let convertie_string : string = inference convertie_bis 
 
 let main () =
   print_endline "======================";
@@ -238,11 +298,15 @@ let main () =
   print_endline "======================";
   print_endline ex_sous_string;
   print_endline "======================";
-  print_endline ex_cons_string;
-  print_endline "======================";
   print_endline ex_listP_string;
   print_endline "======================";
-  print_endline ex_hd_string
+  print_endline ex_Tail_string;
+  print_endline "======================";
+  print_endline ex_hd_string;
+  print_endline "======================";
+  print_endline ex_zero_string;
+  print_endline "======================";
+  print_endline convertie_string
   
  
  let _ = main ()
