@@ -2,8 +2,8 @@ type 'a liste = Vide | Cons of 'a * 'a liste
 
 (* Termes *)
 type pterm = Var of string
- | App of pterm * pterm 
- | Abs of string * pterm 
+ | App of pterm * pterm  (*Représente l'application d'une fonction à un argument*)
+ | Abs of string * pterm (*la création d'une fonction lambda*)
  | N of int 
  | Add of pterm * pterm 
  | Sou of pterm * pterm 
@@ -142,22 +142,21 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
 (* Resolution*)
 let rec reduction (t: pterm) : pterm=
   match t with 
-  App(Abs(s, t1), t2) -> substitution t1 s t2
-  | App (m, n) ->
+  App(Abs(s, t1), t2) ->  (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
+  | App (m, n) ->  (* a revoir *)
       let m' = reduction m in
       let n' = reduction n in
       App (m', n')
   | Abs (x, m) -> Abs (x, reduction m)
   | _ -> t
-
-and substitution terme x n =
+(*substitution de la variable x par le term "nterm"*)
+and substitution terme x nterm=
   match terme with
-  | Var y when y = x -> n
+  | Var y when y = x -> nterm
   | Var y -> Var y
-  | App (m, m') -> App (substitution m x n, substitution m' x n)
-  | Abs (y, m) when y <> x -> Abs (y, substitution m x n)
-  | Abs (_, _) -> terme
-
+  | App (t1, t2) -> App (substitution t1 x nterm, substitution t2 x nterm)
+  | Abs (y, m) when y <> x -> Abs (y, substitution m x nterm)
+  | Abs (_, _) -> let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
                
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
@@ -294,7 +293,7 @@ let convertie_bis : pterm = alpha_conv_bis ex_listP1  []
 let convertie_string : string = inference convertie_bis 
 let exemple = alpha_conv_bis ex_s []
 let exemple_string : string = print_term exemple
-let exemeple_reduction : pterm = reduction ab_exemple
+let exemeple_reduction : pterm = reduction chat_exemple
 
 let main () =
   print_endline "======================";
@@ -327,7 +326,7 @@ let main () =
   print_endline (print_term ex_listP1);
   print_endline (print_term convertie_bis);
   print_endline "======================";
-  print_endline (print_term ab_exemple);
+  print_endline (print_term chat_exemple);
   print_endline (print_term exemeple_reduction )
 
 
