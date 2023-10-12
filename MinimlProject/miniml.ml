@@ -128,9 +128,9 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Abs(s, t2) -> 
     (match acc with
     |[] -> let nv= nouvelle_var() in 
-           (alpha_conv_bis (Abs(nv, t2)) [(s, nv)]);
-    |(s, value)::_->Abs(value, alpha_conv_bis t2 acc)
-    |(_, value)::rest->(alpha_conv_bis (Abs(s, t2)) rest))
+           (Abs(nv, alpha_conv_bis t2 [(s, nv)]));
+    |(s1, value)::rest when s1 =s ->Abs(value, alpha_conv_bis t2 acc)
+    |_::rest -> (alpha_conv_bis  (Abs(s,t2))  rest ))
   | App(t1, t2) ->App(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Add(t1, t2) ->Add(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Sou(t1, t2) ->Sou(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
@@ -144,8 +144,8 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
                let new_l1 = alpha_conv l1 orig new_var in
                let new_ls = alpha_conv_list ls orig new_var in
                Cons (new_l1, new_ls)
-*)
 
+*)
 
                
 (* genere des equations de typage à partir d'un terme *)  
@@ -280,6 +280,11 @@ let convertie_string : string = inference convertie
 let convertie_bis : pterm = alpha_conv_bis ex_nat1  []
 let convertie_string : string = inference convertie_bis 
 
+
+let exemple = alpha_conv_bis ex_s []
+let exemple_string : string = print_term exemple
+
+
 let main () =
   print_endline "======================";
   print_endline inf_ex_id;
@@ -306,10 +311,15 @@ let main () =
   print_endline "======================";
   print_endline ex_zero_string;
   print_endline "======================";
-  print_endline convertie_string
+  print_endline (print_term ex_omega);
+  print_endline "======================";
+  print_endline (print_term ex_s);
+  print_endline (print_term exemple)
+
   
  
  let _ = main ()
 
  
 
+(* si reduce alors si non app alors on ne fait rient pas de reduction sinon (si APP) on fait substitution on ne renvoie que la partie droite du app donc le body du app *)
