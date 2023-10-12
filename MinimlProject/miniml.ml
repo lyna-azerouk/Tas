@@ -1,5 +1,3 @@
-module StringMap = Map.Make(String)
-
 type 'a liste = Vide | Cons of 'a * 'a liste
 
 (* Termes *)
@@ -41,8 +39,6 @@ and print_term (t : pterm) : string =
     | Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
     | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
-  
-
     
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
@@ -90,7 +86,7 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
   List.map (fun (x, y) -> (substitue_type x v t0, substitue_type y v t0)) e
 
-(*alpha converstion*)
+(*Alpha converstion*)
 let rec alpha_conv(l : pterm) (orig: string) (new_var :string ): pterm =
   match l with
     Var variable_to_replace when variable_to_replace = orig -> (Var new_var)
@@ -111,7 +107,7 @@ let rec alpha_conv(l : pterm) (orig: string) (new_var :string ): pterm =
                let new_ls = alpha_conv_list ls orig new_var in
                Cons (new_l1, new_ls)
 
-(*alpha converstion Bis*)
+(*Alpha converstion Bis*)
 let rec alpha_conv_bis(l : pterm) acc: pterm =
   match l with
   | Var variable_to_replace ->
@@ -123,29 +119,44 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
         if var = variable_to_replace then
           Var new_var
         else
-          Var (nouvelle_var ()))  (* Using nouvelle_var() to generate a new variable *)
+          alpha_conv_bis (Var variable_to_replace) rest)
   | N value -> N value
-  | Abs(s, t2) -> 
-    (match acc with
-    |[] -> let nv= nouvelle_var() in 
-           (Abs(nv, alpha_conv_bis t2 [(s, nv)]));
-    |(s1, value)::rest when s1 =s ->Abs(value, alpha_conv_bis t2 acc)
-    |_::rest -> (alpha_conv_bis  (Abs(s,t2))  rest ))
+  | Abs(s, t2) -> let nv= nouvelle_var() in 
+           (Abs(nv, alpha_conv_bis t2 ((s, nv)::acc)));
   | App(t1, t2) ->App(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Add(t1, t2) ->Add(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Sou(t1, t2) ->Sou(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
-  (*| ListP l ->match l with 
+  |Hd t1 ->Hd(alpha_conv_bis t1 acc)
+  |Tail t1 -> Hd(alpha_conv_bis t1 acc)
+  | ListP l ->match l with 
              |Vide ->ListP(Vide)
-             |Cons (l1, ls)-> ListP(Cons((alpha_conv l1 acc), alpha_conv_list ls acc))
+             |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
   and alpha_conv_list (lst : pterm liste) acc : pterm liste =
              match lst with
              | Vide -> Vide
              | Cons (l1, ls) ->
-               let new_l1 = alpha_conv l1 orig new_var in
-               let new_ls = alpha_conv_list ls orig new_var in
+               let new_l1 = alpha_conv_bis l1 acc in
+               let new_ls = alpha_conv_list ls acc in
                Cons (new_l1, new_ls)
 
-*)
+(* Resolution*)
+let rec reduction (t: pterm) : pterm=
+  match t with 
+  App(Abs(s, t1), t2) -> substitution t1 s t2
+  | App (m, n) ->
+      let m' = reduction m in
+      let n' = reduction n in
+      App (m', n')
+  | Abs (x, m) -> Abs (x, reduction m)
+  | _ -> t
+
+and substitution terme x n =
+  match terme with
+  | Var y when y = x -> n
+  | Var y -> Var y
+  | App (m, m') -> App (substitution m x n, substitution m' x n)
+  | Abs (y, m) when y <> x -> Abs (y, substitution m x n)
+  | Abs (_, _) -> terme
 
                
 (* genere des equations de typage à partir d'un terme *)  
@@ -261,15 +272,17 @@ let inf_ex_nat1 : string = inference ex_nat1
 let ex_nat2 : pterm = Abs ("x", Add( Var "x", Var "x"))
 let inf_ex_nat2 : string = inference ex_nat2
 let ex_omega : pterm = App (Abs ("x", App (Var "x", Var "x")), Abs ("y", App (Var "y", Var "y")))
+let chat_exemple : pterm = App (Abs ("x", App (Var "x", Var "y")), N 42)
 let inf_ex_omega : string = inference ex_omega
 let ex_nat3 : pterm = App (ex_nat2, ex_id)
 let inf_ex_nat3 : string = inference ex_nat3
-let ex_sous : pterm =    Sou((N 3), (N 3))
+let ex_sous : pterm = Sou((N 3), (N 3))
 let ex_sous_string : string =  inference ex_sous
-let ex_listP1 : pterm = ListP (Cons( (N 3), Cons (ex_sous, Vide)))
+let ex_listP1 : pterm = ListP (Cons(ex_id, Cons (ex_sous, Vide)))
 let ex_listP2 : pterm = ListP (Cons( (N 3), Cons (ex_listP1, Vide)))
 let ex_listP_string  : string = inference  ex_listP1
 let ex_hd : pterm =  Hd(ex_listP1)
+let ab_exemple : pterm =  App (Abs ("x", App (Var "x", Var "x")),  (Abs ("x", App (Var "x", Var "x"))))
 let ex_hd_string  : string = inference  ex_hd
 let ex_Tail : pterm =  Tail ex_listP1
 let ex_Tail_string  : string = inference  ex_Tail
@@ -277,13 +290,11 @@ let ex_izeo : pterm= Izte ((N 0), ex_listP1, ex_listP1)
 let ex_zero_string : string = inference ex_izeo
 let convertie : pterm = alpha_conv ex_nat1  "x" "y"
 let convertie_string : string = inference convertie
-let convertie_bis : pterm = alpha_conv_bis ex_nat1  []
+let convertie_bis : pterm = alpha_conv_bis ex_listP1  []
 let convertie_string : string = inference convertie_bis 
-
-
 let exemple = alpha_conv_bis ex_s []
 let exemple_string : string = print_term exemple
-
+let exemeple_reduction : pterm = reduction ab_exemple
 
 let main () =
   print_endline "======================";
@@ -313,8 +324,12 @@ let main () =
   print_endline "======================";
   print_endline (print_term ex_omega);
   print_endline "======================";
-  print_endline (print_term ex_s);
-  print_endline (print_term exemple)
+  print_endline (print_term ex_listP1);
+  print_endline (print_term convertie_bis);
+  print_endline "======================";
+  print_endline (print_term ab_exemple);
+  print_endline (print_term exemeple_reduction )
+
 
   
  
@@ -322,4 +337,4 @@ let main () =
 
  
 
-(* si reduce alors si non app alors on ne fait rient pas de reduction sinon (si APP) on fait substitution on ne renvoie que la partie droite du app donc le body du app *)
+(* si reduce alors si non app alors on ne fait rient pas de reduction sinon (si App) on fait substitution on ne renvoie que la partie droite du App donc le body du app *)
