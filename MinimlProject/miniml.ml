@@ -146,7 +146,10 @@ let rec reduction (t: pterm) : pterm=
   | App (m, n) ->  (* a revoir *)
       let m' = reduction m in
       let n' = reduction n in
-      App (m', n')
+      (match m' with 
+          |Abs(s, t1) ->App ((substitution t1 s m'), n')
+          |_ -> App (m', n')
+      )
   | Abs (x, m) -> Abs (x, reduction m)
   | _ -> t
 (*substitution de la variable x par le term "nterm"*)
@@ -271,7 +274,7 @@ let inf_ex_nat1 : string = inference ex_nat1
 let ex_nat2 : pterm = Abs ("x", Add( Var "x", Var "x"))
 let inf_ex_nat2 : string = inference ex_nat2
 let ex_omega : pterm = App (Abs ("x", App (Var "x", Var "x")), Abs ("y", App (Var "y", Var "y")))
-let chat_exemple : pterm = App (Abs ("x", App (Var "x", Var "y")), N 42)
+let chat_exemple : pterm = App (Abs ("x", App (Var "x", Var "x")), N 42)
 let inf_ex_omega : string = inference ex_omega
 let ex_nat3 : pterm = App (ex_nat2, ex_id)
 let inf_ex_nat3 : string = inference ex_nat3
@@ -293,7 +296,7 @@ let convertie_bis : pterm = alpha_conv_bis ex_listP1  []
 let convertie_string : string = inference convertie_bis 
 let exemple = alpha_conv_bis ex_s []
 let exemple_string : string = print_term exemple
-let exemeple_reduction : pterm = reduction chat_exemple
+let exemeple_reduction : pterm = reduction ex_omega
 
 let main () =
   print_endline "======================";
@@ -326,7 +329,7 @@ let main () =
   print_endline (print_term ex_listP1);
   print_endline (print_term convertie_bis);
   print_endline "======================";
-  print_endline (print_term chat_exemple);
+  print_endline (print_term ex_omega);
   print_endline (print_term exemeple_reduction )
 
 
