@@ -1,0 +1,5 @@
+(executable
+ (public_name Miniml)
+ (name main)
+ (libraries  Miniml )
+(flags (:standard -warn-error -A)))

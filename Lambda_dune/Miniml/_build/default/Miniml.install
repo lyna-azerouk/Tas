@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/Miniml/META"
+  "_build/install/default/lib/Miniml/dune-package"
+  "_build/install/default/lib/Miniml/opam"
+]
+bin: [
+  "_build/install/default/bin/Miniml"
+]
