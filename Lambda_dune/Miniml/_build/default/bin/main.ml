@@ -1,13 +1,4 @@
 (* ***EXEMPLES*** *)  
-let ex_id : Typeur.pterm = Typeur.Abs ("x", Typeur.Var "x") 
-let inf_ex_id : string = Typeur.inference ex_id 
-let ex_k : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Var "x")) 
-let inf_ex_k : string = Typeur.inference ex_k
-let ex_nat1 : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.Add(Typeur.Var "x", Typeur.N 1)),Typeur.N 3)
-let inf_ex_nat1 : string = Typeur.inference ex_nat1
-let ex_s : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Abs ("z", Typeur.App (Typeur.App (Typeur.Var "x", Typeur.Var "z"), Typeur.App (Typeur.Var "y", Typeur.Var "z")))))
-let chat_exemple : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.App (Typeur.Var "x", Typeur.Var "x")), Typeur.N 42)
-let inf_ex_s : string = Typeur.inference ex_s 
 (**
 
 let ex_nat2 : pterm = Abs ("x", Add( Var "x", Var "x"))
@@ -30,7 +21,17 @@ let ex_zero_string : string = inference ex_izeo
 let convertie : pterm = alpha_conv ex_nat1  "x" "y"
 let convertie_string : string = inference convertie
 *)
-let convertie_bis = Typeur.alpha_conv_bis ex_s  []
+let ex_id : Typeur.pterm = Typeur.Abs ("x", Typeur.Var "x") 
+let inf_ex_id : string = Typeur.inference ex_id 
+let ex_k : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Var "x")) 
+let inf_ex_k : string = Typeur.inference ex_k
+let ex_nat1 : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.Add(Typeur.Var "x", Typeur.N 1)),Typeur.N 3)
+let inf_ex_nat1 : string = Typeur.inference ex_nat1
+let ex_s : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Abs ("z", Typeur.App (Typeur.App (Typeur.Var "x", Typeur.Var "z"), Typeur.App (Typeur.Var "y", Typeur.Var "z")))))
+let chat_exemple : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.App (Typeur.Var "x", Typeur.Var "x")), Typeur.N 42)
+let inf_ex_s : string = Typeur.inference ex_s 
+let exemple_let: Typeur.pterm = Typeur.Let("x", (Typeur.Var "y" ), (Typeur.Var "x"))
+let convertie_bis = Typeur.alpha_conv_bis exemple_let  []
 let exemple = Typeur.alpha_conv_bis ex_s []
 let exemeple_reduction : Typeur.pterm = Typeur.reduction chat_exemple
 
@@ -62,7 +63,7 @@ let main () =
   print_endline "======================";
   print_endline (print_term ex_omega);
   print_endline "======================";*)
-  print_endline (Typeur.print_term ex_s);
+  print_endline (Typeur.print_term exemple_let );
   print_endline (Typeur.print_term convertie_bis);
   print_endline "======================";
   print_endline (Typeur.print_term chat_exemple);

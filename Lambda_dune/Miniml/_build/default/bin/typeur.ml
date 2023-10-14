@@ -12,6 +12,8 @@ type pterm = Var of string
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
  | Iete of pterm * pterm * pterm 
+ | Pfix of pterm 
+ | Let of string * pterm * pterm 
 
 (* Types *) 
 type ptype = Var of string | Arr of ptype * ptype | Nat | Tliste of ptype(* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
@@ -39,7 +41,9 @@ and print_term (t : pterm) : string =
     | Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
     | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
-    
+    | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
+    |Pfix t -> (print_term t)
+
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
   match t with
@@ -81,6 +85,7 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
   | Arr (t1, t2) -> Arr (substitue_type t1 v t0, substitue_type t2 v t0) 
   | Nat -> Nat 
   |Tliste l -> Tliste(substitue_type l v t0)
+  
 
 (* remplace une variable par un type dans une liste d'équations*)
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
@@ -95,10 +100,11 @@ let rec alpha_conv(l : pterm) (orig: string) (new_var :string ): pterm =
   | Abs(s, t2)  when s = orig -> Abs(new_var, alpha_conv t2 orig new_var)
   | Add(t1, t2) ->Add(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
   | Sou(t1, t2) ->Sou(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
+  |Hd t1 -> Hd(alpha_conv t1 orig new_var) 
+  |Tail t1 -> Tail(alpha_conv t1 orig new_var)
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
              |Cons (l1, ls)-> ListP(Cons((alpha_conv l1 orig new_var), alpha_conv_list ls  orig new_var))
-
   and alpha_conv_list (lst : pterm liste) (orig : string) (new_var : string) : pterm liste =
              match lst with
              | Vide -> Vide
@@ -126,8 +132,12 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | App(t1, t2) ->App(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Add(t1, t2) ->Add(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Sou(t1, t2) ->Sou(alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
-  |Hd t1 ->Hd(alpha_conv_bis t1 acc)
-  |Tail t1 -> Hd(alpha_conv_bis t1 acc)
+  | Hd t1 ->Hd(alpha_conv_bis t1 acc)
+  | Tail t1 -> Hd(alpha_conv_bis t1 acc)
+  | Izte (cond, t1, t2)-> Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  | Izte(cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  | Let (s, t1, t2) ->let nv= nouvelle_var()in
+                       (Let(nv, alpha_conv_bis t1 acc, alpha_conv_bis t2 ((s,nv)::acc) ))                             (*replace all s occurece in t2*)
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
