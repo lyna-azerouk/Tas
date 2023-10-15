@@ -8,11 +8,11 @@ type pterm = Var of string
  | Add of pterm * pterm 
  | Sou of pterm * pterm 
  | ListP of pterm liste
- | Hd of  pterm 
+ | Hd of pterm 
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
  | Iete of pterm * pterm * pterm 
- | Pfix of pterm 
+ | Pfix of string * pterm *pterm
  | Let of string * pterm * pterm 
 
 (* Types *) 
@@ -42,7 +42,7 @@ and print_term (t : pterm) : string =
     | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
-    |Pfix t -> (print_term t)
+    | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
 
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
@@ -135,9 +135,9 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Hd t1 ->Hd(alpha_conv_bis t1 acc)
   | Tail t1 -> Hd(alpha_conv_bis t1 acc)
   | Izte (cond, t1, t2)-> Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
-  | Izte(cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
-  | Let (s, t1, t2) ->let nv= nouvelle_var()in
-                       (Let(nv, alpha_conv_bis t1 acc, alpha_conv_bis t2 ((s,nv)::acc) ))                             (*replace all s occurece in t2*)
+  | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
+  | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
+                        (Let(nv, alpha_conv_bis t1 acc, alpha_conv_bis t2 ((s, nv)::acc)))                            (*replace all s occurece in t2*)
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
@@ -149,6 +149,16 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
                let new_ls = alpha_conv_list ls acc in
                Cons (new_l1, new_ls)
 
+exception Echec_reduction      
+
+(* fonction   map sur les liste *)
+let map_list (lst :pterm liste) f= 
+  let rec map_list_aux l f  =
+     match lst with 
+     | Vide -> Vide
+     | Cons (t1, ls)->Cons((f t1), (map_list_aux ls f))
+        in map_list_aux lst f 
+
 (* Resolution*)
 let rec reduction (t: pterm) : pterm=
   match t with 
@@ -158,10 +168,40 @@ let rec reduction (t: pterm) : pterm=
       let n' = reduction n in
       (match m' with 
           |Abs(s, t1) ->App ((substitution t1 s m'), n')
-          |_ -> App (m', n')
-      )
+          |_ -> App (m', n'))
   | Abs (x, m) -> Abs (x, reduction m)
+  | Add(t1, t2) -> let val_1 : pterm = reduction t1 in 
+                   let val_2 : pterm = reduction t2 in 
+                    (match (val_1, val_2) with 
+                      |((N val1), (N val2)) -> (N(val1 + val2))
+                      |_ -> raise Echec_reduction
+                    )
+  | Sou(t1, t2) ->  let val_1 : pterm = reduction t1 in 
+                    let val_2 : pterm = reduction t2 in 
+                    (match (val_1, val_2) with 
+                      |((N val1), (N val2)) -> (N(val1 - val2))
+                      |_ -> raise Echec_reduction)
+  |Hd t1 -> match (reduction t1) with 
+            |ListP(Vide)-> ListP(Vide)
+            |ListP(Cons(fst,_)) -> fst
+            |_ -> raise Echec_reduction
+
+  |Tail t1 -> Tail(reduction t1 )
+  |Izte (cond, t1, t2) ->
+        if ((reduction cond)= (N 0)) then (* Cas ou reduction n'est pas reductible on raise erreur change if with paternmatch*)
+          (reduction t1)
+        else 
+          (reduction t2)
+  |Iete (cond, t1, t2) ->
+        if ((reduction cond)= ListP(Vide)) then (* Cas ou reduction n'est pas reductible on garde la meme structure*)
+          (reduction t1)
+        else 
+          (reduction t2)
+  | ListP t1 -> match t1 with 
+                |Vide -> ListP(Vide)
+                |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));
   | _ -> t
+
 (*substitution de la variable x par le term "nterm"*)
 and substitution terme x nterm=
   match terme with
@@ -170,10 +210,10 @@ and substitution terme x nterm=
   | App (t1, t2) -> App (substitution t1 x nterm, substitution t2 x nterm)
   | Abs (y, m) when y <> x -> Abs (y, substitution m x nterm)
   | Abs (_, _) -> let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
-               
+
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
-let map_liste (l : pterm liste) ty e f =
+let map_liste_gen_equa (l : pterm liste) ty e f =
   let rec aux_map l ty e f =
     match l with
     | Vide -> let nhv : string = nouvelle_var() in
@@ -203,7 +243,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   |Tail t1 -> let nhv : string = nouvelle_var() in 
     let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
     (ty, (Tliste (Var nhv)))::eq
-  |ListP l-> map_liste  l ty e genere_equa
+  |ListP l-> map_liste_gen_equa  l ty e genere_equa
   |Hd t1 -> let nhv : string = nouvelle_var() in 
       let eq : equa=genere_equa t1  (Tliste(Var nhv)) e in 
         (ty , (Var nhv))::eq
