@@ -170,7 +170,7 @@ let map_list (lst :pterm liste) f=
 (* Resolution*)
 let rec reduction (t: pterm) : pterm=
   match t with 
-  App(Abs(s, t1), t2) -> print_endline "je uis la ";(substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
+  App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
   | App (m, n) ->  
       let m' = reduction m in
       let n' = reduction n in
@@ -224,6 +224,7 @@ and substitution terme x nterm=
   match terme with
   | Var y when y = x ->   nterm
   | Var y ->  Var y
+  | N v -> (N v)
   | App (t1, t2) ->  App (substitution t1 x nterm, substitution t2 x nterm)
   | Abs (y, m) when y <> x ->   Abs (y, substitution m x nterm)   (*raise TimeOut*)
   | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
@@ -231,7 +232,7 @@ and substitution terme x nterm=
 
 
 
-  
+
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
 let map_liste_gen_equa (l : pterm liste) ty e f =
@@ -268,18 +269,22 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   |Hd t1 -> let nhv : string = nouvelle_var() in 
       let eq : equa=genere_equa t1  (Tliste(Var nhv)) e in 
         (ty , (Var nhv))::eq
-  |Izte (condition, t1, t2) ->(let nvh1: string =nouvelle_var() in 
-      let nvh2: string =nouvelle_var() in 
-        let cond: equa =genere_equa condition Nat e in 
-          let eq1: equa =genere_equa t1 ty e in   (* what is the type expected of t1*)
-              let eq2: equa =genere_equa t2 ty e in 
-                (cond@eq1@eq2))
-  |Iete (condition, t1, t2) ->let nvh1: string =nouvelle_var() in
+  |Izte (condition, t1, t2) ->(let cond: equa =genere_equa condition Nat e and  eq1: equa =genere_equa t1  ty  e and eq2: equa =genere_equa t2 ty e in 
+                (cond@ (eq1@eq2)))
+
+  |Iete (condition, t1, t2) ->(let nvh1: string =nouvelle_var() in
     let nvh2: string =nouvelle_var() in
     let cond: equa = genere_equa condition (Tliste(Var (nouvelle_var()))) e in  
-    let eq1: equa =genere_equa t1 ty e in   (* what is the type expected of t1*)
+    let eq1 : equa =genere_equa t1 ty e in   (* what is the type expected of t1*)
      let eq2: equa =genere_equa t2 ty e in 
-     (cond@eq1@eq2)
+     (cond@eq1@eq2))
+  |Let (s, t1, t2) -> (let nvh: string = nouvelle_var() in 
+        let nvh1: string =nouvelle_var() in
+        let nvh2: string =nouvelle_var() in
+        let eq1 : equa = genere_equa t1 (Arr (Var nvh1, ty)) e  in 
+        let eq2 : equa = genere_equa t2 (Arr (Var nvh2, ty)) e  in 
+              (ty, (Var nvh))::(eq1@eq2))
+
 
 
 exception Echec_unif of string      
