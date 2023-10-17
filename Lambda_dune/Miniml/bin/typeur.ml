@@ -139,7 +139,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Izte (cond, t1, t2)-> Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
-                        (Let(nv, alpha_conv_bis t1 acc, alpha_conv_bis t2 ((s, nv)::acc)))                            (*replace all s occurece in t2*)
+                        (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                           (*replace all s occurece in t2*)
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
@@ -201,14 +201,16 @@ let rec reduction (t: pterm) : pterm=
                           (match cond_reduced with 
                               | (N 0)-> (reduction t1)
                               | _ -> (reduction t2))
-  |Iete (cond, t1, t2) -> let cond_reduced : pterm= (reduction cond)in 
+  |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond)in 
                           (match cond_reduced with 
                           | ListP(Vide) -> (reduction t1)
                           | ListP(_) -> (reduction t2)
                           | _ -> raise Echec_reduction)
-  | ListP t1 -> match t1 with 
+  | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
-                |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));
+                |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));)
+  |Let (s, t1, t2) -> let reduce_t1 =reduction t1 in 
+                        reduction(substitution  t2  s reduce_t1)     (*substitution de s dans t2*)
   | _ -> t
 
 (*substitution de la variable x par le term "nterm"*)
@@ -312,7 +314,7 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
     (* types à droite pas à gauche : échec *)
   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
-  |(e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
+  | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
                                        
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =

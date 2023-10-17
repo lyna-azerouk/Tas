@@ -24,8 +24,7 @@ let convertie_string : string = inference convertie
 *)
 let ex_id : Typeur.pterm = Typeur.Abs ("x", Typeur.Var "x") 
 let inf_ex_id : string = Typeur.inference ex_id 
-let ex_k : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("x", Typeur.Var "x")) 
-let inf_ex_k : string = Typeur.inference ex_k
+let ex_k : Typeur.pterm = Typeur.Abs ("y", Typeur.Abs ("y", Typeur.Var "x")) 
 let ex_nat1 : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.Add(Typeur.Var "x", Typeur.N 1)),Typeur.N 3)
 let inf_ex_nat1 : string = Typeur.inference ex_nat1
 let ex_s : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Abs ("z", Typeur.App (Typeur.App (Typeur.Var "x", Typeur.Var "z"), Typeur.App (Typeur.Var "y", Typeur.Var "z")))))
@@ -46,13 +45,12 @@ let ex_ifz : Typeur.pterm = Typeur.Izte((N 1), ex_hd, ex_sous)
 let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz
 let ex_ife :Typeur.pterm = Typeur.Iete(ex_listP1, ex_id, ex_sous)
 let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife
-
+let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
+let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
 
 let main () =
   print_endline "======================";
   print_endline inf_ex_id;
-  print_endline "======================";
-  print_endline inf_ex_k;
   print_endline "======================";
   print_endline inf_ex_s;
   print_endline "======================";
@@ -92,7 +90,10 @@ let main () =
   print_endline (Typeur.print_term ex_ifz_reduce);
   print_endline "======================";
   print_endline (Typeur.print_term ex_ife); 
-  print_endline (Typeur.print_term ex_ife_reduce)
+  print_endline (Typeur.print_term ex_ife_reduce);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_let); 
+  print_endline (Typeur.print_term ex_let_reduce)
 
 
   
