@@ -1,2 +1,6 @@
 (test
- (name Miniml))
+ (name Miniml)
+ (modules Miniml )
+ (libraries ounit2 )
+ (flags (:standard -warn-error -A))
+ )

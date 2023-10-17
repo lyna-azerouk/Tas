@@ -1,3 +1,5 @@
+
+module Typeur = struct
 type 'a liste = Vide | Cons of 'a * 'a liste
 
 (* Termes *)
@@ -38,8 +40,8 @@ and print_term (t : pterm) : string =
     | Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
     | Hd t1 ->"hd(" ^(print_term t1) ^")"
     | Tail t1 -> "tail(" ^(print_term t1) ^")"
-    | Izte (condition, t1, t2) -> "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
-    | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ "then  " ^(print_term t1)^"else " ^(print_term t2)
+    | Izte (condition, t1, t2) -> "if "^(print_term condition)^ " then  " ^(print_term t1)^" else " ^(print_term t2)
+    | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ " then  " ^(print_term t1)^" else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
     | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
@@ -154,7 +156,7 @@ exception Echec_reduction
 (* fonction   map sur les liste *)
 let map_list (lst :pterm liste) f= 
   let rec map_list_aux l f  =
-     match lst with 
+     match l with 
      | Vide -> Vide
      | Cons (t1, ls)->Cons((f t1), (map_list_aux ls f))
         in map_list_aux lst f 
@@ -176,27 +178,34 @@ let rec reduction (t: pterm) : pterm=
                       |((N val1), (N val2)) -> (N(val1 + val2))
                       |_ -> raise Echec_reduction
                     )
+  |N t1 -> (N t1)
+  |Var s -> (Var s )
   | Sou(t1, t2) ->  let val_1 : pterm = reduction t1 in 
                     let val_2 : pterm = reduction t2 in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 - val2))
                       |_ -> raise Echec_reduction)
-  |Hd t1 -> match (reduction t1) with 
-            |ListP(Vide)-> ListP(Vide)
-            |ListP(Cons(fst,_)) -> fst
-            |_ -> raise Echec_reduction
+  |Hd t1 -> (match t1 with 
+              |ListP(Vide)-> ListP(Vide)
+              |ListP(Cons(fst,_)) ->reduction fst
+              |_ -> raise Echec_reduction)
 
-  |Tail t1 -> Tail(reduction t1 )
-  |Izte (cond, t1, t2) ->
-        if ((reduction cond)= (N 0)) then (* Cas ou reduction n'est pas reductible on raise erreur change if with paternmatch*)
-          (reduction t1)
-        else 
-          (reduction t2)
-  |Iete (cond, t1, t2) ->
-        if ((reduction cond)= ListP(Vide)) then (* Cas ou reduction n'est pas reductible on garde la meme structure*)
-          (reduction t1)
-        else 
-          (reduction t2)
+  |Tail t1 -> (match t1 with 
+              |ListP(Vide)-> ListP(Vide)
+              |ListP(Cons(_,rest)) -> match rest with 
+                                    |Vide -> ListP(Vide)
+                                    |Cons(l1,ls) -> ListP(Cons (reduction l1, map_list ls reduction));
+              |_ -> raise Echec_reduction)
+
+  |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond)in 
+                          (match cond_reduced with 
+                              | (N 0)-> (reduction t1)
+                              | _ -> (reduction t2))
+  |Iete (cond, t1, t2) -> let cond_reduced : pterm= (reduction cond)in 
+                          (match cond_reduced with 
+                          | ListP(Vide) -> (reduction t1)
+                          | ListP(_) -> (reduction t2)
+                          | _ -> raise Echec_reduction)
   | ListP t1 -> match t1 with 
                 |Vide -> ListP(Vide)
                 |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));
@@ -312,4 +321,4 @@ let inference (t : pterm) : string =
        (print_term t)^" ***TYPABLE*** avec le type "^(print_type res))
   with Echec_unif bla -> (print_term t)^" ***PAS TYPABLE*** : "^bla
                          
- 
+end
