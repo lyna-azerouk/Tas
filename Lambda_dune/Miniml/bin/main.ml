@@ -27,7 +27,7 @@ let ex_k : Typeur.pterm = Typeur.Abs ("y", Typeur.Abs ("y", Typeur.Var "x"))
 let ex_nat1 : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.Add(Typeur.Var "x", Typeur.N 1)),Typeur.N 3)
 let inf_ex_nat1 : string = Typeur.inference ex_nat1
 let ex_s : Typeur.pterm = Typeur.Abs ("x", Typeur.Abs ("y", Typeur.Abs ("z", Typeur.App (Typeur.App (Typeur.Var "x", Typeur.Var "z"), Typeur.App (Typeur.Var "y", Typeur.Var "z")))))
-let ex_omega : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.App (Typeur.Var "x", Typeur.Var "x")), Typeur.Abs ("y", Typeur.App (Typeur.Var "y",Typeur. Var "y")))
+let ex_omega : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.App (Typeur.Var "x", Typeur.Var "x")), Typeur.Abs ("x", Typeur.App (Typeur.Var "x",Typeur. Var "x")))
 let chat_exemple : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.App (Typeur.Var "x", Typeur.Var "x")), Typeur.N 42)
 let inf_ex_s : string = Typeur.inference ex_s 
 let exemple_let: Typeur.pterm = Typeur.Let("x", (Typeur.Var "x" ), (Typeur.Var "x"))
@@ -36,6 +36,9 @@ let exemple = Typeur.alpha_conv_bis ex_s []
 let exemeple_reduction : Typeur.pterm = Typeur.reduction chat_exemple
 let ex_sous : Typeur.pterm = Typeur.Sou((Typeur.N 3), (Typeur.N 3))
 let ex_listP1 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons ((N 0), Typeur.Vide)))
+let ex_listP2 : Typeur.pterm = Typeur.ListP (Typeur.Cons((N 0), Typeur.Cons ((N 0), Typeur.Vide)))
+let ex_listP3 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons (ex_id, Typeur.Vide)))
+let ex_listP4 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_sous, Typeur.Cons (ex_sous, Typeur.Vide)))
 let ex_hd: Typeur.pterm = Typeur.Hd(ex_listP1)
 let ex_hd_reduced : Typeur.pterm =Typeur.reduction ex_hd
 let ex_tail: Typeur.pterm =Typeur.Tail(ex_listP1)
@@ -46,23 +49,24 @@ let ex_ife :Typeur.pterm = Typeur.Iete(ex_listP1, ex_id, ex_sous)
 let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife
 let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
 let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
+let let_exmaple: Typeur.pterm =Typeur.reduction  (Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
+let ex_let_ab :Typeur.pterm =Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
+
 
 let main () =
-  (**print_endline inf_ex_omega;
+  (**
   print_endline "======================";
   print_endline inf_ex_nat3;
-  print_endline "======================";
-  print_endline ex_sous_string;
-  print_endline "======================";
-  print_endline ex_listP_string;
   print_endline "======================";
   print_endline ex_Tail_string;
   print_endline "======================";
   print_endline ex_hd_string;
   print_endline "======================";
   print_endline ex_zero_string;*)
+
+  (*print_endline ("term "^Typeur.print_term ex_omega);*)
+  (*print_endline("reduction"^Typeur.print_term (Typeur.reduction  ex_omega));*)
   print_endline "======================";
-  print_endline (Typeur.print_term ex_omega);
   print_endline "======================";
   print_endline (Typeur.print_term ex_id );
   print_endline (Typeur.print_term convertie_bis);
@@ -84,7 +88,14 @@ let main () =
   print_endline "======================";
   print_endline (Typeur.print_term ex_let); 
   print_endline (Typeur.print_term ex_let_reduce);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_let_ab);
+  print_endline (Typeur.print_term (Typeur.reduction ex_let_ab));
+
   print_endline "==========TYPEUR============";
+  (*print_endline (Typeur.print_term ex_omega);*)
+  (*print_endline((Typeur.inference ex_omega));   Boucle infinie OK*)
+  print_endline "======================";
   print_endline (Typeur.print_term ex_id);
   print_endline inf_ex_id;
   print_endline "======================";
@@ -95,13 +106,33 @@ let main () =
   print_endline inf_ex_nat1;
   print_endline "======================";
   print_endline (Typeur.print_term ex_listP1);
-  print_endline (Typeur.inference ex_listP1)
+  print_endline (Typeur.inference ex_listP1);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP2);
+  print_endline (Typeur.inference ex_listP2);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP3);
+  print_endline (Typeur.inference ex_listP3);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP4);
+  print_endline (Typeur.inference ex_listP4);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_hd);
+  print_endline (Typeur.inference ex_hd);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_hd);
+  print_endline (Typeur.inference (Typeur.reduction ex_hd));
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_tail);
+  print_endline (Typeur.inference  ex_tail);
+  print_endline "======================"
 
 
- (** assert_equal  ~msg:"" ~printer:(Typeur.print_term ex_id (alpha_conv_bis ex_id [])) *)  
+
  
  let _ = main ()
 
  
 
 (* si reduce alors si non app alors on ne fait rient pas de reduction sinon (si App) on fait substitution on ne renvoie que la partie droite du App donc le body du app *)
+(** Si l'element n'est pas bien typé ===> non typable *)
