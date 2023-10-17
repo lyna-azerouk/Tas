@@ -2,7 +2,6 @@ open Typeur;;
 
 (* ***EXEMPLES*** *)  
 (**
-
 let ex_nat2 : pterm = Abs ("x", Add( Var "x", Var "x"))
 let inf_ex_nat2 : string = inference ex_nat2
 let inf_ex_omega : string = inference ex_omega
@@ -49,16 +48,7 @@ let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
 let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
 
 let main () =
-  print_endline "======================";
-  print_endline inf_ex_id;
-  print_endline "======================";
-  print_endline inf_ex_s;
-  print_endline "======================";
   (**print_endline inf_ex_omega;
-  print_endline "======================";
-  print_endline inf_ex_nat1;
-  print_endline "======================";
-  print_endline inf_ex_nat2;
   print_endline "======================";
   print_endline inf_ex_nat3;
   print_endline "======================";
@@ -93,10 +83,20 @@ let main () =
   print_endline (Typeur.print_term ex_ife_reduce);
   print_endline "======================";
   print_endline (Typeur.print_term ex_let); 
-  print_endline (Typeur.print_term ex_let_reduce)
+  print_endline (Typeur.print_term ex_let_reduce);
+  print_endline "==========TYPEUR============";
+  print_endline (Typeur.print_term ex_id);
+  print_endline inf_ex_id;
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_s);
+  print_endline inf_ex_s;
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_nat1);
+  print_endline inf_ex_nat1;
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP1);
+  print_endline  (Typeur.inference ex_listP1)
 
-
-  
 
  (** assert_equal  ~msg:"" ~printer:(Typeur.print_term ex_id (alpha_conv_bis ex_id [])) *)  
  

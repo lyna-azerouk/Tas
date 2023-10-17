@@ -1,5 +1,6 @@
 
 module Typeur = struct
+module StringSet = Set.Make(String)
 type 'a liste = Vide | Cons of 'a * 'a liste
 
 (* Termes *)
@@ -18,8 +19,13 @@ type pterm = Var of string
  | Let of string * pterm * pterm 
 
 (* Types *) 
-type ptype = Var of string | Arr of ptype * ptype | Nat | Tliste of ptype(* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
-(* Environnements de typage *) 
+type ptype = Var of string 
+  | Arr of ptype * ptype 
+  | Nat 
+  | Tliste of ptype   (* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
+  | Forall of StringSet.t * ptype
+
+  (* Environnements de typage *) 
 type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
 (* Listes d'équations *) 
 type equa = (ptype * ptype) list (* liste de couples de types*)
@@ -53,7 +59,7 @@ let rec print_type (t : ptype) : string =
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
   | Nat -> "Nat"
   | Tliste l -> "[" ^ print_type l ^ "]"
-
+  | Forall (set, t1) -> "Forall " ^(StringSet.fold (fun elem acc -> acc ^ elem) set "" )^ " "^(print_type t1)
 
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    

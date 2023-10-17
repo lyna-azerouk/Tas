@@ -2,6 +2,6 @@
  (public_name Miniml)
  (name main )
  (modules  Main Typeur)
- (libraries  Miniml  )
+ (libraries  Miniml   )
 (flags (:standard -warn-error -A)))
 
