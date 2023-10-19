@@ -83,6 +83,7 @@ let rec appartient_type (v : string) (t : ptype) : bool =
     Var v1 when v1 = v -> true
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
   |Tliste l ->  appartient_type  v  l
+  (*|Forall l -> List.map appartient_type l  *)
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -231,8 +232,6 @@ and substitution terme x nterm=
   | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
 
 
-
-
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
 let map_liste_gen_equa (l : pterm liste) ty e f =
@@ -243,6 +242,8 @@ let map_liste_gen_equa (l : pterm liste) ty e f =
     | Cons (l, ls) -> let nhv : string = nouvelle_var() in
       (ty, Tliste(Var nhv))::(f l (Var nhv) e)@(aux_map ls (Tliste(Var nhv)) e f)
             in aux_map l ty e f
+
+
 
 
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
@@ -269,21 +270,24 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   |Hd t1 -> let nhv : string = nouvelle_var() in 
       let eq : equa=genere_equa t1  (Tliste(Var nhv)) e in 
         (ty , (Var nhv))::eq
-  |Izte (condition, t1, t2) ->(let cond: equa =genere_equa condition Nat e and  eq1: equa =genere_equa t1  ty  e and eq2: equa =genere_equa t2 ty e in 
-                (cond@ (eq1@eq2)))
+  |Izte (condition, t1, t2) ->(let cond: equa =genere_equa condition Nat e in 
+   let varh :string = nouvelle_var() in
+     let eq1: equa =genere_equa t1 (Var varh)  e and eq2: equa =genere_equa t2 (Var varh) e in 
+                ((ty, (Arr(Nat, (Var varh))))::cond@ (eq1@eq2)))
 
   |Iete (condition, t1, t2) ->(let nvh1: string =nouvelle_var() in
-    let nvh2: string =nouvelle_var() in
     let cond: equa = genere_equa condition (Tliste(Var (nouvelle_var()))) e in  
-    let eq1 : equa =genere_equa t1 ty e in   (* what is the type expected of t1*)
-     let eq2: equa =genere_equa t2 ty e in 
-     (cond@eq1@eq2))
-  |Let (s, t1, t2) -> (let nvh: string = nouvelle_var() in 
-        let nvh1: string =nouvelle_var() in
-        let nvh2: string =nouvelle_var() in
-        let eq1 : equa = genere_equa t1 (Arr (Var nvh1, ty)) e  in 
-        let eq2 : equa = genere_equa t2 (Arr (Var nvh2, ty)) e  in 
-              (ty, (Var nvh))::(eq1@eq2))
+    let eq1 : equa =genere_equa t1 (Var nvh1) e in   (* what is the type expected of t1*)
+     let eq2: equa =genere_equa t2 (Var nvh1) e in 
+        ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
+  |Let (s, e1, e2) -> (let nvh :  string = nouvelle_var() in
+    let var_ptype : ptype = (Var  nvh) in
+    let nvh2 : string = nouvelle_var() in
+      let eq1 : equa = genere_equa e1 (Var nvh) e  in 
+        let eq2 : equa =  genere_equa   (e2) ty  ((s, var_ptype)::e) in 
+          (ty, (Var nvh2))::(eq1@eq2))  
+
+
 
 
 

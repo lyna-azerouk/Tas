@@ -22,7 +22,6 @@ let convertie : pterm = alpha_conv ex_nat1  "x" "y"
 let convertie_string : string = inference convertie
 *)
 let ex_id : Typeur.pterm = Typeur.Abs ("x", Typeur.Var "x") 
-let inf_ex_id : string = Typeur.inference ex_id 
 let ex_k : Typeur.pterm = Typeur.Abs ("y", Typeur.Abs ("y", Typeur.Var "x")) 
 let ex_nat1 : Typeur.pterm = Typeur.App (Typeur.Abs ("x", Typeur.Add(Typeur.Var "x", Typeur.N 1)),Typeur.N 3)
 let inf_ex_nat1 : string = Typeur.inference ex_nat1
@@ -43,14 +42,18 @@ let ex_hd: Typeur.pterm = Typeur.Hd(ex_listP1)
 let ex_hd_reduced : Typeur.pterm =Typeur.reduction ex_hd
 let ex_tail: Typeur.pterm =Typeur.Tail(ex_listP1)
 let ex_tail_reduce: Typeur.pterm = Typeur.reduction ex_tail
-let ex_ifz : Typeur.pterm = Typeur.Izte((N 1), ex_hd, ex_sous)
-let ex_ifz : Typeur.pterm = Typeur.Izte((N 0), ex_listP2, ex_sous)
-let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz
+let ex_ifz1 : Typeur.pterm = Typeur.Izte((N 1), ex_listP2, ex_listP2)
+let ex_ifz2 : Typeur.pterm = Typeur.Izte((N 0), ex_sous, ex_sous)
+let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz1
 let ex_ife :Typeur.pterm = Typeur.Iete(ex_listP1, ex_id, ex_sous)
 let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife
 let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
 let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
-let ex_let_ab :Typeur.pterm =Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
+let ex_let_ab : Typeur.pterm = Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
+let ex_liste_ab : Typeur.pterm = Typeur.ListP(Typeur.Vide)
+let ex_let : Typeur.pterm =  Typeur.Let("x", (N 3), ex_id)
+let ex_id_y : Typeur.pterm = Typeur.Abs ("y", Typeur.Var "x") 
+
 
 
 let main () =
@@ -80,7 +83,7 @@ let main () =
   print_endline (Typeur.print_term ex_tail);
   prerr_endline (Typeur.print_term ex_tail_reduce);
   print_endline "======================";
-  print_endline (Typeur.print_term ex_ifz); 
+  print_endline (Typeur.print_term ex_ifz1); 
   print_endline (Typeur.print_term ex_ifz_reduce);
   print_endline "======================";
   print_endline (Typeur.print_term ex_ife); 
@@ -96,7 +99,6 @@ let main () =
   (*print_endline((Typeur.inference ex_omega));   Boucle infinie OK*)
   print_endline "======================";
   print_endline (Typeur.print_term ex_id);
-  print_endline inf_ex_id;
   print_endline "======================";
   print_endline (Typeur.print_term ex_s);
   print_endline inf_ex_s;
@@ -125,13 +127,11 @@ let main () =
   print_endline (Typeur.print_term ex_tail);
   print_endline (Typeur.inference  ex_tail);
   print_endline "======================";
-  print_endline(Typeur.print_term ex_ifz);
-  print_endline(Typeur.inference ex_ifz);
+  print_endline(Typeur.print_term ex_ifz1);
+  print_endline(Typeur.inference ex_ifz1);
   print_endline "======================";
-  print_endline(Typeur.print_term ex_let);
+  print_endline(Typeur.print_term  ex_let);
   print_endline(Typeur.inference ex_let)
-
-
 
  
  let _ = main ()
