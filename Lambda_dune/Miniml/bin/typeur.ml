@@ -17,6 +17,11 @@ type pterm = Var of string
  | Iete of pterm * pterm * pterm 
  | Pfix of string * pterm *pterm
  | Let of string * pterm * pterm 
+ | Ref of pterm 
+ | DeRef of pterm   (* the value of *)
+ | Assign of  pterm * pterm
+ | Unit 
+ | Rho of pterm   (** !!!!!!*)
 
 (* Types *) 
 type ptype = Var of string 
@@ -24,6 +29,8 @@ type ptype = Var of string
   | Nat 
   | Tliste of ptype   (* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
   | Forall of StringSet.t * ptype
+  |UnitT 
+  |RefT of ptype 
 
   (* Environnements de typage *) 
 type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
@@ -51,6 +58,11 @@ and print_term (t : pterm) : string =
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
     | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
+    | Ref e ->  "ref " ^(print_term e)
+    | DeRef e -> "!" ^ (print_term e)
+    | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
+    |Unit -> "()"
+    |Rho e1 -> (print_term e1)
 
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
@@ -60,7 +72,8 @@ let rec print_type (t : ptype) : string =
   | Nat -> "Nat"
   | Tliste l -> "[" ^ print_type l ^ "]"
   | Forall (set, t1) -> "Forall " ^(StringSet.fold (fun elem acc -> acc ^ elem) set "" )^ " "^(print_type t1)
-
+  |UnitT -> "unit"
+  |RefT e -> "ref " ^(print_type e)
 (* générateur de noms frais de variables de types *)
 let compteur_var : int ref = ref 0                    
 
@@ -83,7 +96,6 @@ let rec appartient_type (v : string) (t : ptype) : bool =
     Var v1 when v1 = v -> true
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
   |Tliste l ->  appartient_type  v  l
-  (*|Forall l -> List.map appartient_type l  *)
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -94,33 +106,14 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
   | Arr (t1, t2) -> Arr (substitue_type t1 v t0, substitue_type t2 v t0) 
   | Nat -> Nat 
   |Tliste l -> Tliste(substitue_type l v t0)
+  |RefT t1 -> RefT(substitue_type t1 v t0)
+  |UnitT -> UnitT
   
 
 (* remplace une variable par un type dans une liste d'équations*)
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
   List.map (fun (x, y) -> (substitue_type x v t0, substitue_type y v t0)) e
 
-(*Alpha converstion*)
-let rec alpha_conv(l : pterm) (orig: string) (new_var :string ): pterm =
-  match l with
-    Var variable_to_replace when variable_to_replace = orig -> (Var new_var)
-  | N value->(N value)
-  | App(t1, t2) ->App(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
-  | Abs(s, t2)  when s = orig -> Abs(new_var, alpha_conv t2 orig new_var)
-  | Add(t1, t2) ->Add(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
-  | Sou(t1, t2) ->Sou(alpha_conv t1 orig new_var, alpha_conv t2 orig new_var)
-  |Hd t1 -> Hd(alpha_conv t1 orig new_var) 
-  |Tail t1 -> Tail(alpha_conv t1 orig new_var)
-  | ListP l ->match l with 
-             |Vide ->ListP(Vide)
-             |Cons (l1, ls)-> ListP(Cons((alpha_conv l1 orig new_var), alpha_conv_list ls  orig new_var))
-  and alpha_conv_list (lst : pterm liste) (orig : string) (new_var : string) : pterm liste =
-             match lst with
-             | Vide -> Vide
-             | Cons (l1, ls) ->
-               let new_l1 = alpha_conv l1 orig new_var in
-               let new_ls = alpha_conv_list ls orig new_var in
-               Cons (new_l1, new_ls)
 
 (*Alpha converstion Bis*)
 let rec alpha_conv_bis(l : pterm) acc: pterm =
@@ -147,9 +140,13 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
                         (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                           (*replace all s occurece in t2*)
+  |Ref e -> Ref (alpha_conv_bis e acc)
+  |DeRef e -> DeRef (alpha_conv_bis e acc)
+  |Unit -> Unit
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
+  
   and alpha_conv_list (lst : pterm liste) acc : pterm liste =
              match lst with
              | Vide -> Vide
@@ -218,6 +215,17 @@ let rec reduction (t: pterm) : pterm=
                 |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));)
   |Let (s, t1, t2) -> let reduce_t1 =reduction t1 in 
                         reduction(substitution  (reduction t2)  s reduce_t1)     (*substitution de s dans t2*)
+  |DeRef e -> let e_reduction : pterm =(reduction e ) in 
+              (match e_reduction with 
+                |Rho  p->  (reduction p)
+                |_ -> raise Echec_reduction )
+  |Rho t1 -> (reduction t1)
+  |Assign (t1, t2) -> let e1: pterm = (reduction t1)  and e2: pterm= (reduction t2)  in
+                      (match e1 with 
+                        |Rho p -> (Rho e2)
+                        |_ -> raise Echec_reduction)
+  (** REF ?*)
+  |Unit -> Unit
   | _ -> t
 
 (*substitution de la variable x par le term "nterm"*)
@@ -284,11 +292,8 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
     let var_ptype : ptype = (Var  nvh) in
     let nvh2 : string = nouvelle_var() in
       let eq1 : equa = genere_equa e1 (Var nvh) e  in 
-        let eq2 : equa =  genere_equa   (e2) ty  ((s, var_ptype)::e) in 
-          (ty, (Var nvh2))::(eq1@eq2))  
-
-
-
+        let eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
+          (ty, var_ptype)::(eq1@eq2))  
 
 
 exception Echec_unif of string      

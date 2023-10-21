@@ -51,10 +51,11 @@ let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
 let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
 let ex_let_ab : Typeur.pterm = Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
 let ex_liste_ab : Typeur.pterm = Typeur.ListP(Typeur.Vide)
-let ex_let : Typeur.pterm =  Typeur.Let("x", (N 3), ex_id)
 let ex_id_y : Typeur.pterm = Typeur.Abs ("y", Typeur.Var "x") 
-
-
+let ex_let : Typeur.pterm =  Typeur.Let("x", (N 3), ex_id_y)
+let ex_ref : Typeur.pterm =Typeur.Ref((Var "x"))
+let ex_deref : Typeur.pterm =Typeur.DeRef(Typeur.Rho ((N 3)))
+let ex_assigne : Typeur.pterm =Typeur.Assign((Var "x"), (N 3))
 
 let main () =
   (**
@@ -131,7 +132,17 @@ let main () =
   print_endline(Typeur.inference ex_ifz1);
   print_endline "======================";
   print_endline(Typeur.print_term  ex_let);
-  print_endline(Typeur.inference ex_let)
+  print_endline(Typeur.inference ex_let);
+  print_endline "======================";
+  print_endline(Typeur.print_term ex_ref);
+  print_endline "======================";
+  print_endline(Typeur.print_term ex_deref);
+  print_endline(Typeur.print_term (Typeur.reduction ex_deref));
+  print_endline "======================";
+  print_endline(Typeur.print_term ex_assigne)
+  
+
+
 
  
  let _ = main ()
