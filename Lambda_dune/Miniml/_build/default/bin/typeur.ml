@@ -215,14 +215,19 @@ let rec reduction (t: pterm) : pterm=
                 |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));)
   |Let (s, t1, t2) -> let reduce_t1 =reduction t1 in 
                         reduction(substitution  (reduction t2)  s reduce_t1)     (*substitution de s dans t2*)
+  |Ref t1 -> let e_reduction : pterm = reduction t1 in 
+            (match e_reduction with 
+              |N v -> Rho(e_reduction)
+              |_  -> raise Echec_reduction
+            )
+
   |DeRef e -> let e_reduction : pterm =(reduction e ) in 
               (match e_reduction with 
-                |Rho  p->  (reduction p)
+                |Rho  p-> (reduction p)
                 |_ -> raise Echec_reduction )
-  |Rho t1 -> (reduction t1)
-  |Assign (t1, t2) -> let e1: pterm = (reduction t1)  and e2: pterm= (reduction t2)  in
+  |Assign (t1, t2) -> let e1: pterm = (reduction t1) and e2: pterm= (reduction t2)  in
                       (match e1 with 
-                        |Rho p -> (Rho e2)
+                        |Rho p ->Rho (e2)
                         |_ -> raise Echec_reduction)
   (** REF ?*)
   |Unit -> Unit
@@ -346,7 +351,7 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types à droite pas à gauche : échec *)
   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
   | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
-                                       
+
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =
   let e : equa_zip = ([], genere_equa t (Var "but") []) in
