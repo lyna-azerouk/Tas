@@ -17,7 +17,7 @@ type pterm = Var of string
  | Iete of pterm * pterm * pterm 
  | Pfix of string * pterm *pterm
  | Let of string * pterm * pterm 
- | Ref of pterm 
+ | Ref of (string * pterm)list* pterm 
  | DeRef of pterm   (* the value of *)
  | Assign of  pterm * pterm
  | Unit 
@@ -28,7 +28,7 @@ type ptype = Var of string
   | Arr of ptype * ptype 
   | Nat 
   | Tliste of ptype   (* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
-  | Forall of StringSet.t * ptype
+  | Forall of (string list) * ptype
   |UnitT 
   |RefT of ptype 
 
@@ -59,7 +59,7 @@ and print_term (t : pterm) : string =
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
     | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
-    | Ref e ->  "(ref " ^(print_term e) ^")"
+    | Ref (_, e) ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
     | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
     |Unit -> "()"
@@ -72,7 +72,7 @@ let rec print_type (t : ptype) : string =
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
   | Nat -> "Nat"
   | Tliste l -> "[" ^ print_type l ^ "]"
-  | Forall (set, t1) -> "Forall " ^(StringSet.fold (fun elem acc -> acc ^ elem) set "" )^ " "^(print_type t1)
+  (**| Forall (set, t1) -> "Forall " ^(StringSet.fold (fun elem acc -> acc ^ elem) set "" )^ " "^(print_type t1)  *)
   |UnitT -> "unit"
   |RefT e -> "(ref " ^(print_type e) ^")"
 
@@ -143,7 +143,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
                         (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                           (*replace all s occurece in t2*)
-  |Ref e -> Ref (alpha_conv_bis e acc)
+  |Ref  (_, e) -> Ref ([], (alpha_conv_bis e acc))
   |DeRef e -> DeRef (alpha_conv_bis e acc)
   |Unit -> Unit
   | ListP l ->match l with 
@@ -168,7 +168,7 @@ let map_list (lst :pterm liste) f=
      | Cons (t1, ls)->Cons((f t1), (map_list_aux ls f))
         in map_list_aux lst f 
 
-(* Resolution*)
+(* Evaluation*)
 let rec reduction (t: pterm) : pterm=
   match t with 
   App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
@@ -183,11 +183,10 @@ let rec reduction (t: pterm) : pterm=
                    let val_2 : pterm = reduction t2 in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
-                      |_ -> raise Echec_reduction
-                    )
+                      |_ -> raise Echec_reduction)
   |N t1 -> (N t1)
-  |Var s -> (Var s )
-  | Sou(t1, t2) ->  let val_1 : pterm = reduction t1 in 
+  |Var s -> (Var s)
+  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1 in 
                     let val_2 : pterm = reduction t2 in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 - val2))
@@ -218,19 +217,17 @@ let rec reduction (t: pterm) : pterm=
                 |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));)
   |Let (s, t1, t2) -> let reduce_t1 =reduction t1 in 
                         reduction(substitution  (reduction t2)  s reduce_t1)     (*substitution de s dans t2*)
-  |Ref t1 -> let e_reduction : pterm = reduction t1 in 
-             Rho(e_reduction)
-
+  |Ref  (l, t1) -> let e_reduction : pterm = reduction t1 in 
+                        Rho( e_reduction)
   |DeRef e -> let e_reduction : pterm =(reduction e ) in 
               (match e_reduction with 
-                |Rho  p-> (reduction p)
-                |_ -> raise Echec_reduction )
+                |Rho  p->  p
+                |_ -> print_endline (print_term e); raise Echec_reduction )
   |Assign (t1, t2) -> let e1: pterm = (reduction t1) and e2: pterm= (reduction t2)  in
                       (match e1 with 
                         |Rho p ->Rho (e2)
                         |_ -> raise Echec_reduction)
   |Rho t1 -> Rho (reduction t1)
-  (** REF ?*)
   |Unit -> Unit
   | _ -> t
 
@@ -244,7 +241,7 @@ and substitution terme x nterm=
   | Abs (y, m) when y <> x ->   Abs (y, substitution m x nterm)   (*raise TimeOut*)
   | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
   | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
-
+  | _  -> terme
 
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
@@ -300,7 +297,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       let eq1 : equa = genere_equa e1 (Var nvh) e  in 
         let eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
           (ty, var_ptype)::(eq1@eq2))  
-  |Ref t1 -> (let nvh : ptype = (Var (nouvelle_var())) in 
+  |Ref (_ ,t1)-> (let nvh : ptype = (Var (nouvelle_var())) in 
               let  var_type: ptype = (RefT nvh) and eq1 : equa = genere_equa t1 nvh e in 
             (ty,var_type)::eq1)
   |DeRef t1 -> let nvh :string = nouvelle_var() in 
@@ -308,7 +305,6 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
                   (ty, (Var nvh))::eq1
   |Assign (t1, t2) -> let eq2: equa = (genere_equa t2 ty e ) in 
                   (ty, Var (nouvelle_var()))::eq2
-
 
 exception Echec_unif of string      
 
@@ -362,7 +358,7 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
   | (e1, (RefT type1, RefT type2)::e2 ) -> unification(e1, (type1,type2)::e2) but 
   | (e1, (UnitT, UnitT)::e2) -> unification   (e1, e2) but 
-
+  (**|(e1,((Forall s1 t1), (Forall s2 t2))::e2) -> unification ()  but *)
 
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =

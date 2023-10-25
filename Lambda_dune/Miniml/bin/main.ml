@@ -53,16 +53,19 @@ let ex_let_ab : Typeur.pterm = Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.A
 let ex_liste_ab : Typeur.pterm = Typeur.ListP(Typeur.Vide)
 let ex_id_y : Typeur.pterm = Typeur.Abs ("y", Typeur.Var "x") 
 let ex_let : Typeur.pterm =  Typeur.Let("x", (N 3), ex_id_y)
-let ex_ref : Typeur.pterm =Typeur.Ref((N 3))
-let ex_ref_2 : Typeur.pterm = Typeur.Ref(ex_listP2)
-let ex_ref_3 : Typeur.pterm = Typeur.Let("x",Typeur.Ref(N 3), ex_id_y )
+let ex_ref : Typeur.pterm =Typeur.Ref ([],(N 3))
+let ex_ref_2 : Typeur.pterm = Typeur.Ref([],ex_listP2)
+let ex_ref_3 : Typeur.pterm = Typeur.Let("x",Typeur.Ref([],(N 3)), ex_id_y )
 let ex_deref : Typeur.pterm =Typeur.DeRef(ex_ref)
 let ex_deref_2 : Typeur.pterm =Typeur.DeRef(ex_ref_2)   (* on ne peut pas dref un type il doit etre forcement, on doit forcement dref un type ref *)
 let ex_deref_3 : Typeur.pterm =Typeur.DeRef(ex_ref_3)
-let ex_assigne : Typeur.pterm =Typeur.Assign(Typeur.Ref((Var "x")), ex_tail_reduce)
-
-
-
+let ex_assigne : Typeur.pterm =Typeur.Assign(Typeur.Ref([],(Var "x")), ex_tail_reduce)
+let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRef((Var "y")))
+(* let f = (func x -> let y = ref (!x) in !x*!y) in let x = ref 3 in f(!x+1) + 5
+*)
+let f = Typeur.Abs ("x",Typeur.Let("y",Typeur.Ref([],(Typeur.DeRef(Typeur.Var "x"))),Typeur.Add (Typeur.DeRef((Typeur.Var "x")),Typeur.DeRef((Typeur.Var "y"))))) 
+let x = Typeur.Let("x", Typeur.Ref([],(Typeur.N 3)),  Typeur.Abs("f", Typeur.DeRef(((Var "x")))))
+let app = Typeur.Let ("f", f, x)
 
 let main () =
   (**
@@ -167,8 +170,11 @@ let main () =
   print_endline "======================";
   print_endline(Typeur.print_term ex_assigne);
   print_endline(Typeur.print_term (Typeur.reduction ex_assigne)); (* a revoir !! *)
-  print_endline(Typeur.inference ex_assigne)
-
+  print_endline(Typeur.inference ex_assigne);
+  print_endline "======================";
+  print_endline(Typeur.print_term app);
+  (**print_endline(Typeur.print_term (Typeur.reduction app));*)
+  print_endline (Typeur.inference app)
 
   
 
