@@ -32,40 +32,40 @@ let inf_ex_s : string = Typeur.inference ex_s
 let exemple_let: Typeur.pterm = Typeur.Let("x", (Typeur.Var "x" ), (Typeur.Var "x"))
 let convertie_bis = Typeur.alpha_conv_bis ex_id  []
 let exemple = Typeur.alpha_conv_bis ex_s []
-let exemeple_reduction : Typeur.pterm = Typeur.reduction chat_exemple
+let exemeple_reduction : Typeur.pterm = Typeur.reduction chat_exemple []
 let ex_sous : Typeur.pterm = Typeur.Sou((Typeur.N 3), (Typeur.N 3))
 let ex_listP1 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons ((N 0), Typeur.Vide)))
 let ex_listP2 : Typeur.pterm = Typeur.ListP (Typeur.Cons((N 0), Typeur.Cons ((N 0), Typeur.Vide)))
 let ex_listP3 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons (ex_id, Typeur.Vide)))
 let ex_listP4 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_sous, Typeur.Cons (ex_sous, Typeur.Vide)))
 let ex_hd: Typeur.pterm = Typeur.Hd(ex_listP1)
-let ex_hd_reduced : Typeur.pterm =Typeur.reduction ex_hd
+let ex_hd_reduced : Typeur.pterm =Typeur.reduction ex_hd []
 let ex_tail: Typeur.pterm =Typeur.Tail(ex_listP1)
-let ex_tail_reduce: Typeur.pterm = Typeur.reduction ex_tail
+let ex_tail_reduce: Typeur.pterm = Typeur.reduction ex_tail []
 let ex_ifz1 : Typeur.pterm = Typeur.Izte((N 1), ex_listP2, ex_listP2)
 let ex_ifz2 : Typeur.pterm = Typeur.Izte((N 0), ex_sous, ex_sous)
-let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz1
+let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz1 []
 let ex_ife :Typeur.pterm = Typeur.Iete(ex_listP1, ex_id, ex_sous)
-let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife
+let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife []
 let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
-let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let
+let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let []
 let ex_let_ab : Typeur.pterm = Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
 let ex_liste_ab : Typeur.pterm = Typeur.ListP(Typeur.Vide)
 let ex_id_y : Typeur.pterm = Typeur.Abs ("y", Typeur.Var "x") 
 let ex_let : Typeur.pterm =  Typeur.Let("x", (N 3), ex_id_y)
-let ex_ref : Typeur.pterm =Typeur.Ref ([],(N 3))
-let ex_ref_2 : Typeur.pterm = Typeur.Ref([],ex_listP2)
-let ex_ref_3 : Typeur.pterm = Typeur.Let("x",Typeur.Ref([],(N 3)), ex_id_y )
+let ex_ref : Typeur.pterm =Typeur.Ref ((N 3))
+let ex_ref_2 : Typeur.pterm = Typeur.Ref(ex_listP2)
+let ex_ref_3 : Typeur.pterm = Typeur.Let("x",Typeur.Ref((N 3)), Typeur.Abs ("y",Typeur.DeRef(Typeur.Var "x")))
 let ex_deref : Typeur.pterm =Typeur.DeRef(ex_ref)
 let ex_deref_2 : Typeur.pterm =Typeur.DeRef(ex_ref_2)   (* on ne peut pas dref un type il doit etre forcement, on doit forcement dref un type ref *)
 let ex_deref_3 : Typeur.pterm =Typeur.DeRef(ex_ref_3)
-let ex_assigne : Typeur.pterm =Typeur.Assign(Typeur.Ref([],(Var "x")), ex_tail_reduce)
+let ex_assigne : Typeur.pterm =Typeur.Assign(Typeur.Ref((Var "x")), ex_tail_reduce)
 let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRef((Var "y")))
 (* let f = (func x -> let y = ref (!x) in !x*!y) in let x = ref 3 in f(!x+1) + 5
 *)
 let f = Typeur.Abs ("x",Typeur.Let("y",Typeur.Ref([],(Typeur.DeRef(Typeur.Var "x"))),Typeur.Add (Typeur.DeRef((Typeur.Var "x")),Typeur.DeRef((Typeur.Var "y"))))) 
 let x = Typeur.Let("x", Typeur.Ref([],(Typeur.N 3)),  Typeur.Abs("f", Typeur.DeRef(((Var "x")))))
-let app = Typeur.Let ("f", f, x)
+let app = Typeur.Let ("f", f, x) 
 
 let main () =
   (**
@@ -104,7 +104,7 @@ let main () =
   print_endline (Typeur.print_term ex_let_reduce);
   print_endline "======================";
   print_endline (Typeur.print_term ex_let_ab);
-  print_endline (Typeur.print_term (Typeur.reduction ex_let_ab));
+  print_endline (Typeur.print_term (Typeur.reduction ex_let_ab []));
   print_endline "==========TYPEUR============";
   (*print_endline (Typeur.print_term ex_omega);*)
   (*print_endline((Typeur.inference ex_omega));   Boucle infinie OK*)
@@ -133,7 +133,7 @@ let main () =
   print_endline (Typeur.inference ex_hd);
   print_endline "======================";
   print_endline (Typeur.print_term ex_hd);
-  print_endline (Typeur.inference (Typeur.reduction ex_hd));
+  print_endline (Typeur.inference (Typeur.reduction ex_hd []));
   print_endline "======================";
   print_endline (Typeur.print_term ex_tail);
   print_endline (Typeur.inference  ex_tail);
@@ -145,36 +145,33 @@ let main () =
   print_endline(Typeur.inference ex_let);
   print_endline "======================";
   print_endline(Typeur.print_term ex_ref);
-  print_endline(Typeur.print_term (Typeur.reduction ex_ref));
+  print_endline(Typeur.print_term (Typeur.reduction ex_ref []));
   print_endline  (Typeur.inference ex_ref);
   print_endline "======================";
   print_endline(Typeur.print_term ex_ref_2);
-  print_endline(Typeur.print_term (Typeur.reduction ex_ref_2));
+  print_endline(Typeur.print_term (Typeur.reduction ex_ref_2 []));
   print_endline  (Typeur.inference ex_ref_2);
   print_endline "======================";
   print_endline(Typeur.print_term ex_ref_3);
-  print_endline(Typeur.print_term (Typeur.reduction ex_ref_3));
+  print_endline(Typeur.print_term (Typeur.reduction ex_ref_3 []));
   print_endline  (Typeur.inference ex_ref_3);
   print_endline "======================";
   print_endline(Typeur.print_term ex_deref);
-  print_endline(Typeur.print_term (Typeur.reduction ex_deref));
+  print_endline(Typeur.print_term (Typeur.reduction ex_deref []));
   print_endline (Typeur.inference ex_deref);
   print_endline "======================";
   print_endline(Typeur.print_term ex_deref_2);
-  print_endline(Typeur.print_term (Typeur.reduction ex_deref_2));
+  print_endline(Typeur.print_term (Typeur.reduction ex_deref_2 []));
   print_endline (Typeur.inference ex_deref_2);
   print_endline "======================";
   print_endline(Typeur.print_term ex_deref_3);
- (**print_endline(Typeur.print_term (Typeur.reduction ex_deref_3)); *)  (** a voir avec les autres *)
+  print_endline(Typeur.print_term (Typeur.reduction ex_deref_3 []));  (** a voir avec les autres *)
   print_endline (Typeur.inference ex_deref_3);
   print_endline "======================";
   print_endline(Typeur.print_term ex_assigne);
-  print_endline(Typeur.print_term (Typeur.reduction ex_assigne)); (* a revoir !! *)
+  print_endline(Typeur.print_term (Typeur.reduction ex_assigne [])); (* a revoir !! *)
   print_endline(Typeur.inference ex_assigne);
-  print_endline "======================";
-  print_endline(Typeur.print_term app);
-  (**print_endline(Typeur.print_term (Typeur.reduction app));*)
-  print_endline (Typeur.inference app)
+  print_endline "======================"
 
   
 

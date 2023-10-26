@@ -17,7 +17,7 @@ type pterm = Var of string
  | Iete of pterm * pterm * pterm 
  | Pfix of string * pterm *pterm
  | Let of string * pterm * pterm 
- | Ref of (string * pterm)list* pterm 
+ | Ref of  pterm 
  | DeRef of pterm   (* the value of *)
  | Assign of  pterm * pterm
  | Unit 
@@ -59,7 +59,7 @@ and print_term (t : pterm) : string =
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
     | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
-    | Ref (_, e) ->  "(ref " ^(print_term e) ^")"
+    | Ref e ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
     | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
     |Unit -> "()"
@@ -143,7 +143,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
                         (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                           (*replace all s occurece in t2*)
-  |Ref  (_, e) -> Ref ([], (alpha_conv_bis e acc))
+  |Ref  e -> Ref (alpha_conv_bis e acc)
   |DeRef e -> DeRef (alpha_conv_bis e acc)
   |Unit -> Unit
   | ListP l ->match l with 
@@ -161,73 +161,86 @@ and alpha_conv_list (lst : pterm liste) acc : pterm liste =
 exception Echec_reduction      
 
 (* fonction   map sur les liste *)
-let map_list (lst :pterm liste) f= 
+let map_list (lst :pterm liste) acc f= 
   let rec map_list_aux l f  =
      match l with 
      | Vide -> Vide
-     | Cons (t1, ls)->Cons((f t1), (map_list_aux ls f))
+     | Cons (t1, ls)->Cons((f t1 acc), (map_list_aux ls f ))
         in map_list_aux lst f 
 
+let rec find_in_memo (s :string) acc = 
+  match acc with 
+  | []-> raise Echec_reduction
+  | (variable, value)::tail when  s= variable -> value
+  | (variable, value)::tail  ->  find_in_memo s tail
+
+
 (* Evaluation*)
-let rec reduction (t: pterm) : pterm=
+let rec reduction (t: pterm)  acc: pterm=
   match t with 
   App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
   | App (m, n) ->  
-      let m' = reduction m in
-      let n' = reduction n in
+      let m' = reduction m acc in
+      let n' = reduction n acc in
       (match m' with 
           |Abs(s, t1) ->App ((substitution t1 s m'), n')
           |_ -> App (m', n'))
-  | Abs (x, m) -> Abs (x, reduction m)
-  | Add(t1, t2) -> let val_1 : pterm = reduction t1 in 
-                   let val_2 : pterm = reduction t2 in 
+  | Abs (x, m) -> Abs (x, reduction m acc)
+  | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc in 
+                   let val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
                       |_ -> raise Echec_reduction)
   |N t1 -> (N t1)
   |Var s -> (Var s)
-  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1 in 
-                    let val_2 : pterm = reduction t2 in 
+  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc in 
+                    let val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 - val2))
                       |_ -> raise Echec_reduction)
   |Hd t1 -> (match t1 with 
               |ListP(Vide)-> ListP(Vide)
-              |ListP(Cons(fst,_)) ->reduction fst
+              |ListP(Cons(fst,_)) ->reduction fst acc
               |_ -> raise Echec_reduction)
 
   |Tail t1 -> (match t1 with 
               |ListP(Vide)-> ListP(Vide)
               |ListP(Cons(_,rest)) -> match rest with 
                                     |Vide -> ListP(Vide)
-                                    |Cons(l1,ls) -> ListP(Cons (reduction l1, map_list ls reduction));
+                                    |Cons(l1,ls) -> ListP(Cons ((reduction l1 acc), (map_list ls acc reduction)));
               |_ -> raise Echec_reduction)
 
-  |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond)in 
+  |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
                           (match cond_reduced with 
-                              | (N 0)-> (reduction t1)
-                              | _ -> (reduction t2))
-  |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond)in 
+                              | (N 0)-> (reduction t1 acc)
+                              | _ -> (reduction t2 acc))
+  |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
                           (match cond_reduced with 
-                          | ListP(Vide) -> (reduction t1)
-                          | ListP(_) -> (reduction t2)
+                          | ListP(Vide) -> (reduction t1 acc)
+                          | ListP(_) -> (reduction t2 acc)
                           | _ -> raise Echec_reduction)
   | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
-                |Cons (l1, ls) -> ListP(Cons (reduction l1, map_list ls reduction));)
-  |Let (s, t1, t2) -> let reduce_t1 =reduction t1 in 
-                        reduction(substitution  (reduction t2)  s reduce_t1)     (*substitution de s dans t2*)
-  |Ref  (l, t1) -> let e_reduction : pterm = reduction t1 in 
-                        Rho( e_reduction)
-  |DeRef e -> let e_reduction : pterm =(reduction e ) in 
+                |Cons (l1, ls) -> ListP(Cons (reduction l1 acc, map_list ls acc reduction));)
+  |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
+                        match reduce_t1 with 
+                          |Ref f ->(reduction t2 ((s,f)::acc))
+                          |_ ->reduction((substitution (reduction t2 acc) s reduce_t1)) acc) (*substitution de s dans t2*)    
+  |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
+                        Ref(e_reduction)
+  |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
               (match e_reduction with 
-                |Rho  p->  p
-                |_ -> print_endline (print_term e); raise Echec_reduction )
-  |Assign (t1, t2) -> let e1: pterm = (reduction t1) and e2: pterm= (reduction t2)  in
+                |Ref e  -> e
+                |Rho p->p
+                |Var x_reduction->(match find_in_memo  x_reduction acc with
+                            |value -> value
+                            |_ -> raise Echec_reduction))
+                |_ -> raise Echec_reduction
+  |Assign (t1, t2) -> let e1: pterm = (reduction t1 acc) and e2: pterm= (reduction t2 acc)  in
                       (match e1 with 
-                        |Rho p ->Rho (e2)
+                        |Rho p ->Rho e2
                         |_ -> raise Echec_reduction)
-  |Rho t1 -> Rho (reduction t1)
+  |Rho t1 -> Rho (reduction t1 acc)
   |Unit -> Unit
   | _ -> t
 
@@ -297,7 +310,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       let eq1 : equa = genere_equa e1 (Var nvh) e  in 
         let eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
           (ty, var_ptype)::(eq1@eq2))  
-  |Ref (_ ,t1)-> (let nvh : ptype = (Var (nouvelle_var())) in 
+  |Ref t1-> (let nvh : ptype = (Var (nouvelle_var())) in 
               let  var_type: ptype = (RefT nvh) and eq1 : equa = genere_equa t1 nvh e in 
             (ty,var_type)::eq1)
   |DeRef t1 -> let nvh :string = nouvelle_var() in 
