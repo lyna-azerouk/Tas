@@ -62,8 +62,8 @@ and print_term (t : pterm) : string =
     | Ref e ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
     | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
-    |Unit -> "()"
-    |Rho e1 ->"(loc "^ (print_term e1)^")"
+    | Unit -> "()"
+    | Rho e1 ->"(loc "^ (print_term e1)^")"
 
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
@@ -170,7 +170,7 @@ let map_list (lst :pterm liste) acc f=
 
 let rec find_in_memo (s :string) acc = 
   match acc with 
-  | []-> raise Echec_reduction
+  | []->raise Echec_reduction
   | (variable, value)::tail when  s= variable -> value
   | (variable, value)::tail  ->  find_in_memo s tail
 
@@ -190,7 +190,7 @@ let rec reduction (t: pterm)  acc: pterm=
                    let val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
-                      |_ -> raise Echec_reduction)
+                      |_ -> print_endline( print_term val_1);raise Echec_reduction)
   |N t1 -> (N t1)
   |Var s -> (Var s)
   |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc in 
@@ -225,21 +225,21 @@ let rec reduction (t: pterm)  acc: pterm=
   |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
                         match reduce_t1 with 
                           |Ref f ->(reduction t2 ((s,f)::acc))
-                          |_ ->reduction((substitution (reduction t2 acc) s reduce_t1)) acc) (*substitution de s dans t2*)    
+                          |_ ->reduction((substitution (reduction t2 ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
   |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
-                        Ref(e_reduction)
+             Ref(e_reduction) 
   |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
               (match e_reduction with 
-                |Ref e  -> e
+                |Ref e -> e
                 |Rho p->p
-                |Var x_reduction->(match find_in_memo  x_reduction acc with
+                |Var x_reduction->print_endline("je suis la 0");(match find_in_memo  x_reduction acc with
                             |value -> value
-                            |_ -> raise Echec_reduction))
-                |_ -> raise Echec_reduction
+                            |_ ->print_endline("je suis la 1"); raise Echec_reduction)
+                |_ -> print_endline("je uis la 2");raise Echec_reduction)
   |Assign (t1, t2) -> let e1: pterm = (reduction t1 acc) and e2: pterm= (reduction t2 acc)  in
                       (match e1 with 
-                        |Rho p ->Rho e2
-                        |_ -> raise Echec_reduction)
+                        |Ref p -> e2
+                        |_ ->print_endline("je uis la 3"); raise Echec_reduction)
   |Rho t1 -> Rho (reduction t1 acc)
   |Unit -> Unit
   | _ -> t

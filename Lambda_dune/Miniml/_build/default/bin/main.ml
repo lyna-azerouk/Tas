@@ -61,10 +61,10 @@ let ex_deref_2 : Typeur.pterm =Typeur.DeRef(ex_ref_2)   (* on ne peut pas dref u
 let ex_deref_3 : Typeur.pterm =Typeur.DeRef(ex_ref_3)
 let ex_assigne : Typeur.pterm =Typeur.Assign(Typeur.Ref((Var "x")), ex_tail_reduce)
 let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRef((Var "y")))
-(* let f = (func x -> let y = ref (!x) in !x*!y) in let x = ref 3 in f(!x+1) + 5
-*)
-let f = Typeur.Abs ("x",Typeur.Let("y",Typeur.Ref([],(Typeur.DeRef(Typeur.Var "x"))),Typeur.Add (Typeur.DeRef((Typeur.Var "x")),Typeur.DeRef((Typeur.Var "y"))))) 
-let x = Typeur.Let("x", Typeur.Ref([],(Typeur.N 3)),  Typeur.Abs("f", Typeur.DeRef(((Var "x")))))
+(* let f = (func x -> let y = ref (!x) in !x*!y) in let x = ref 3 in f(!x+1) + 5*)
+
+let f = Typeur.Abs ("x",Typeur.Let("y",Typeur.Ref((Typeur.DeRef(Typeur.Var "x"))),Typeur.Add (Typeur.DeRef((Typeur.Var "x")),Typeur.DeRef((Typeur.Var "y"))))) 
+let x = Typeur.Let("x", Typeur.Ref((Typeur.N 3)),  Typeur.Abs("f", Typeur.DeRef(((Var "x")))))
 let app = Typeur.Let ("f", f, x) 
 
 let main () =
@@ -77,7 +77,6 @@ let main () =
   print_endline ex_hd_string;
   print_endline "======================";
   print_endline ex_zero_string;*)
-
   (*print_endline ("term "^Typeur.print_term ex_omega);*)
   (*print_endline("reduction"^Typeur.print_term (Typeur.reduction  ex_omega));*)
   print_endline "======================";
@@ -164,14 +163,13 @@ let main () =
   print_endline(Typeur.print_term (Typeur.reduction ex_deref_2 []));
   print_endline (Typeur.inference ex_deref_2);
   print_endline "======================";
-  print_endline(Typeur.print_term ex_deref_3);
-  print_endline(Typeur.print_term (Typeur.reduction ex_deref_3 []));  (** a voir avec les autres *)
-  print_endline (Typeur.inference ex_deref_3);
-  print_endline "======================";
-  print_endline(Typeur.print_term ex_assigne);
+  (**print_endline(Typeur.print_term ex_assigne);
   print_endline(Typeur.print_term (Typeur.reduction ex_assigne [])); (* a revoir !! *)
-  print_endline(Typeur.inference ex_assigne);
-  print_endline "======================"
+  print_endline(Typeur.inference ex_assigne);**)
+  print_endline "======================";
+  print_endline(Typeur.print_term app);
+  print_endline(Typeur.print_term (Typeur.reduction app []))
+
 
   
 
