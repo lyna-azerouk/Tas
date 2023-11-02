@@ -2,6 +2,7 @@
 module Typeur = struct
 module StringSet = Set.Make(String)
 type 'a liste = Vide | Cons of 'a * 'a liste
+exception Echec_unif of string      
 
 (* Termes *)
 type pterm = Var of string
@@ -15,20 +16,21 @@ type pterm = Var of string
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
  | Iete of pterm * pterm * pterm 
- | Pfix of string * pterm *pterm
+ | Pfix of string * pterm  *pterm
  | Let of string * pterm * pterm 
+ (* 4.1.1 *)
  | Ref of  pterm 
- | DeRef of pterm   (* the value of *)
+ | DeRef of pterm 
  | Assign of  pterm * pterm
  | Unit 
- | Rho of pterm   (** !!!!!!*)
 
-(* Types *) 
+(****************************************** III. Types ******************************************)
 type ptype = Var of string 
   | Arr of ptype * ptype 
   | Nat 
-  | Tliste of ptype   (* Arr le type des fonctions Arr (Nat, Var "int") pourrait représenter le type d'une fonction qui prend un argument de type Nat et retourne un résultat de type Var "int".*)
+  | Tliste of ptype  
   | Forall of (string list) * ptype
+  (* 4.3.1 *)
   |UnitT 
   |RefT of ptype 
 
@@ -46,11 +48,13 @@ let rec print_term_liste t =
        
 and print_term (t : pterm) : string =
   match t with
+  (* 2.1.2 *)     
     Var x -> x
     | App (t1, t2) -> "(" ^ (print_term t1) ^" "^ (print_term t2) ^ ")"   
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
     | N n -> string_of_int n
     | Add (t1, t2) -> "(" ^ (print_term t1) ^" + "^ (print_term t2) ^ ")"
+    (* 3.1.2 *)  
     | Sou(t1,t2) ->  "("^ (print_term t1)^ " - " ^(print_term t2) ^")"
     | Hd t1 ->"hd(" ^(print_term t1) ^")"
     | Tail t1 -> "tail(" ^(print_term t1) ^")"
@@ -59,11 +63,11 @@ and print_term (t : pterm) : string =
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
     | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
+    (* 4.1.2 *) 
     | Ref e ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
     | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
     | Unit -> "()"
-    | Rho e1 ->"(loc "^ (print_term e1)^")"
 
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
@@ -174,7 +178,7 @@ let rec find_in_memo (s :string) acc =
   | (variable, value)::tail when  s= variable -> value
   | (variable, value)::tail  ->  find_in_memo s tail
 
-
+(****************************************** III. Evaluation ******************************************)
 (* Evaluation*)
 let rec reduction (t: pterm)  acc: pterm=
   match t with 
@@ -225,22 +229,20 @@ let rec reduction (t: pterm)  acc: pterm=
   |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
                         match reduce_t1 with 
                           |Ref f ->(reduction t2 ((s,f)::acc))
-                          |_ ->reduction((substitution (reduction t2 ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
+                          |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
   |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
              Ref(e_reduction) 
   |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
               (match e_reduction with 
                 |Ref e -> e
-                |Rho p->p
-                |Var x_reduction->print_endline("je suis la 0");(match find_in_memo  x_reduction acc with
+                |Var x_reduction->(match find_in_memo  x_reduction acc with
                             |value -> value
-                            |_ ->print_endline("je suis la 1"); raise Echec_reduction)
+                            |_ -> raise Echec_reduction)
                 |_ -> print_endline("je uis la 2");raise Echec_reduction)
   |Assign (t1, t2) -> let e1: pterm = (reduction t1 acc) and e2: pterm= (reduction t2 acc)  in
                       (match e1 with 
                         |Ref p -> e2
-                        |_ ->print_endline("je uis la 3"); raise Echec_reduction)
-  |Rho t1 -> Rho (reduction t1 acc)
+                        |_ -> raise Echec_reduction)
   |Unit -> Unit
   | _ -> t
 
@@ -256,6 +258,8 @@ and substitution terme x nterm=
   | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
   | _  -> terme
 
+
+(****************************************** III. Typage ******************************************)
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
 let map_liste_gen_equa (l : pterm liste) ty e f =
@@ -268,12 +272,10 @@ let map_liste_gen_equa (l : pterm liste) ty e f =
             in aux_map l ty e f
 
 
-
-
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
-    Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (*tv est de type ptype*) (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
-  | App (t1, t2) -> let nv : string = nouvelle_var () in (* why nv*)
+    Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
+  | App (t1, t2) -> let nv : string = nouvelle_var () in 
       let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in  (* le type  attendue de de t1 est un Arr(Var nv), ty) *)
       let eq2 : equa = genere_equa t2 (Var nv) e in
       eq1 @ eq2
@@ -281,11 +283,9 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       and nv2 : string = nouvelle_var () in
       (ty, Arr (Var nv1, Var nv2))::(genere_equa t (Var nv2) ((x, Var nv1)::e))  
   | N _ -> [(ty, Nat)]
-  | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e in
-      let eq2 : equa = genere_equa t2 Nat e in
-      (ty, Nat)::(eq1 @ eq2)   (*le but etant d'associer de construire une liste d'equations, on calcule l'equation de  t1 et t2 puis concatenation avec (ty, Nat)*)
-  | Sou (t1, t2) -> let eq1: equa = genere_equa t1 Nat e in
-      let eq2 : equa = genere_equa t2 Nat e in 
+  | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e and eq2 : equa = genere_equa t2 Nat e in
+      (ty, Nat)::(eq1 @ eq2) 
+  | Sou (t1, t2) -> let eq1: equa = genere_equa t1 Nat e and eq2 : equa = genere_equa t2 Nat e in 
       (ty, Nat)::(eq1 @ eq2)
   |Tail t1 -> let nhv : string = nouvelle_var() in 
     let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
@@ -301,25 +301,22 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
 
   |Iete (condition, t1, t2) ->(let nvh1: string =nouvelle_var() in
     let cond: equa = genere_equa condition (Tliste(Var (nouvelle_var()))) e in  
-    let eq1 : equa =genere_equa t1 (Var nvh1) e in   (* what is the type expected of t1*)
-     let eq2: equa =genere_equa t2 (Var nvh1) e in 
+    let eq1 : equa =genere_equa t1 (Var nvh1) e and eq2: equa =genere_equa t2 (Var nvh1) e in 
         ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
   |Let (s, e1, e2) -> (let nvh :  string = nouvelle_var() in
     let var_ptype : ptype = (Var  nvh) in
     let nvh2 : string = nouvelle_var() in
-      let eq1 : equa = genere_equa e1 (Var nvh) e  in 
-        let eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
+      let eq1 : equa = genere_equa e1 (Var nvh) e  and  eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
           (ty, var_ptype)::(eq1@eq2))  
   |Ref t1-> (let nvh : ptype = (Var (nouvelle_var())) in 
               let  var_type: ptype = (RefT nvh) and eq1 : equa = genere_equa t1 nvh e in 
-            (ty,var_type)::eq1)
+                (ty,var_type)::eq1)
   |DeRef t1 -> let nvh :string = nouvelle_var() in 
                 let eq1: equa= (genere_equa t1 (RefT (Var nvh))  e) in 
                   (ty, (Var nvh))::eq1
-  |Assign (t1, t2) -> let eq2: equa = (genere_equa t2 ty e ) in 
-                  (ty, Var (nouvelle_var()))::eq2
+  |Assign (t1, t2) -> let nv: string = nouvelle_var() in (let eq1: equa = (genere_equa t1 (RefT (Var nv)) e) and  eq2: equa = (genere_equa t2 (Var nv ) e ) in 
+                  (ty, UnitT)::(eq1@eq2))
 
-exception Echec_unif of string      
 
 (* zipper d'une liste d'équations *)
 type equa_zip = equa * equa  (*(((ptype * ptype)list *  (ptype * ptype)list))===> ([(type1, type2)], [(type3, type4)]* )*) 
@@ -368,10 +365,9 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
     (* types à droite pas à gauche : échec *)
   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
-  | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar*)
-  | (e1, (RefT type1, RefT type2)::e2 ) -> unification(e1, (type1,type2)::e2) but 
-  | (e1, (UnitT, UnitT)::e2) -> unification   (e1, e2) but 
-  (**|(e1,((Forall s1 t1), (Forall s2 t2))::e2) -> unification ()  but *)
+  | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar Diawara *)
+  | (e1,(RefT t1,RefT t2)::e2) -> unification (e1,(t1,t2)::e2) but
+  | (e1,(UnitT ,UnitT )::e2) -> unification (e1,e2) but
 
 (* enchaine generation d'equation et unification *)                                   
 let inference (t : pterm) : string =
