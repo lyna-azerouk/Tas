@@ -3,7 +3,10 @@ module Typeur = struct
 module StringSet = Set.Make(String)
 type 'a liste = Vide | Cons of 'a * 'a liste
 exception Echec_unif of string      
+exception VarPasTrouve
+exception Echec_reduction      
 
+(****************************************** I. Termes ******************************************)
 (* Termes *)
 type pterm = Var of string
  | App of pterm * pterm  (*Représente l'application d'une fonction à un argument*)
@@ -24,21 +27,6 @@ type pterm = Var of string
  | Assign of  pterm * pterm
  | Unit 
 
-(****************************************** III. Types ******************************************)
-type ptype = Var of string 
-  | Arr of ptype * ptype 
-  | Nat 
-  | Tliste of ptype  
-  | Forall of (string list) * ptype
-  (* 4.3.1 *)
-  |UnitT 
-  |RefT of ptype 
-
-(* Environnements de typage *) 
-type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
-(* Listes d'équations *) 
-type equa = (ptype * ptype) list (* liste de couples de types*)
-
 (* pretty printer de termes*)     
 let rec print_term_liste t =
   let rec aux = function  
@@ -48,7 +36,7 @@ let rec print_term_liste t =
        
 and print_term (t : pterm) : string =
   match t with
-  (* 2.1.2 *)     
+    (* 2.1.2 *)     
     Var x -> x
     | App (t1, t2) -> "(" ^ (print_term t1) ^" "^ (print_term t2) ^ ")"   
     | Abs (x, t) -> "(fun "^ x ^" -> " ^ (print_term t) ^")" 
@@ -69,6 +57,22 @@ and print_term (t : pterm) : string =
     | Assign (e1, e2) ->  (print_term e1) ^ ":=" ^ (print_term e2)
     | Unit -> "()"
 
+(****************************************** I. Types ******************************************)
+type ptype = Var of string 
+  | Arr of ptype * ptype 
+  | Nat 
+  (* 3.3.1 *)  
+  | Tliste of ptype  
+  | Forall of (string list) * ptype
+  (* 4.3.1 *)
+  |UnitT 
+  |RefT of ptype 
+
+(* Environnements de typage *) 
+type env = (string * ptype) list  (* liste de type de chaque variable  (var , ptype)*)
+(* Listes d'équations *) 
+type equa = (ptype * ptype) list (* liste de couples de types*)
+
 (* pretty printer de types*)                   
 let rec print_type (t : ptype) : string =
   match t with
@@ -76,8 +80,8 @@ let rec print_type (t : ptype) : string =
   | Arr (t1, t2) -> "(" ^ (print_type t1) ^" -> "^ (print_type t2) ^")"
   | Nat -> "Nat"
   | Tliste l -> "[" ^ print_type l ^ "]"
-  (**| Forall (set, t1) -> "Forall " ^(StringSet.fold (fun elem acc -> acc ^ elem) set "" )^ " "^(print_type t1)  *)
-  |UnitT -> "unit"
+  | Forall (set, t1) -> "Forall " ^(List.fold_left (fun elem acc -> acc ^ elem) "" set )^ " "^(print_type t1) 
+  |UnitT -> "Unit"
   |RefT e -> "(ref " ^(print_type e) ^")"
 
 (* générateur de noms frais de variables de types *)
@@ -85,9 +89,6 @@ let compteur_var : int ref = ref 0
 
 let nouvelle_var () : string = compteur_var := !compteur_var + 1; 
   "T"^(string_of_int !compteur_var)
-
-
-exception VarPasTrouve
 
 (* cherche le type d'une variable dans un environnement *)
 let rec cherche_type (v : string) (e : env) : ptype =
@@ -101,8 +102,9 @@ let rec appartient_type (v : string) (t : ptype) : bool =
   match t with
     Var v1 when v1 = v -> true
   | Arr (t1, t2) -> (appartient_type v t1) || (appartient_type v t2) 
-  |Tliste l ->  appartient_type  v  l
+  |Tliste l -> appartient_type  v  l
   |RefT r ->  appartient_type v  r 
+  | Forall (set, t1) -> List.exists (fun element -> appartient_type element t1) set
   | _ -> false
 
 (* remplace une variable par un type dans type *)
@@ -114,13 +116,13 @@ let rec substitue_type (t : ptype) (v : string) (t0 : ptype) : ptype =
   | Nat -> Nat 
   |Tliste l -> Tliste(substitue_type l v t0)
   |RefT t1 -> RefT(substitue_type t1 v t0)
+  |Forall (set, t1) when (List.mem v set) -> Forall (set,(substitue_type t1 v t0))
+  |Forall (set, t1) -> t1
   |UnitT -> UnitT
   
-
 (* remplace une variable par un type dans une liste d'équations*)
 let substitue_type_partout (e : equa) (v : string) (t0 : ptype) : equa =
   List.map (fun (x, y) -> (substitue_type x v t0, substitue_type y v t0)) e
-
 
 (*Alpha converstion Bis*)
 let rec alpha_conv_bis(l : pterm) acc: pterm =
@@ -146,7 +148,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
   | Izte (cond, t1, t2)-> Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Iete (cond, t1, t2)->Izte(alpha_conv_bis cond acc, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc)
   | Let (s, t1, t2) ->let nv: string =nouvelle_var() in 
-                        (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                           (*replace all s occurece in t2*)
+                        (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                        
   |Ref  e -> Ref (alpha_conv_bis e acc)
   |DeRef e -> DeRef (alpha_conv_bis e acc)
   |Unit -> Unit
@@ -162,8 +164,7 @@ and alpha_conv_list (lst : pterm liste) acc : pterm liste =
                let new_ls = alpha_conv_list ls acc in
                Cons (new_l1, new_ls)
 
-exception Echec_reduction      
-
+(****************************************** III. Evaluation ***************************************************************************************)
 (* fonction   map sur les liste *)
 let map_list (lst :pterm liste) acc f= 
   let rec map_list_aux l f  =
@@ -174,11 +175,10 @@ let map_list (lst :pterm liste) acc f=
 
 let rec find_in_memo (s :string) acc = 
   match acc with 
-  | []->raise Echec_reduction
+  | []->print_endline("je uis la ");raise Echec_reduction
   | (variable, value)::tail when  s= variable -> value
   | (variable, value)::tail  ->  find_in_memo s tail
 
-(****************************************** III. Evaluation ******************************************)
 (* Evaluation*)
 let rec reduction (t: pterm)  acc: pterm=
   match t with 
@@ -190,15 +190,13 @@ let rec reduction (t: pterm)  acc: pterm=
           |Abs(s, t1) ->App ((substitution t1 s m'), n')
           |_ -> App (m', n'))
   | Abs (x, m) -> Abs (x, reduction m acc)
-  | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc in 
-                   let val_2 : pterm = reduction t2 acc in 
+  | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc and  val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
-                      |_ -> print_endline( print_term val_1);raise Echec_reduction)
+                      |_ ->print_endline("je uis la "); raise Echec_reduction)
   |N t1 -> (N t1)
   |Var s -> (Var s)
-  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc in 
-                    let val_2 : pterm = reduction t2 acc in 
+  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc and val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 - val2))
                       |_ -> raise Echec_reduction)
@@ -228,21 +226,21 @@ let rec reduction (t: pterm)  acc: pterm=
                 |Cons (l1, ls) -> ListP(Cons (reduction l1 acc, map_list ls acc reduction));)
   |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
                         match reduce_t1 with 
-                          |Ref f ->(reduction t2 ((s,f)::acc))
-                          |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
+                          |Ref f ->print_endline("je uis la ");(reduction t2 ((s,f)::acc))
+                          |_ ->print_endline("je uis la "); reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
   |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
-             Ref(e_reduction) 
+              print_endline("je uis la ");Ref(e_reduction) 
   |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
               (match e_reduction with 
                 |Ref e -> e
                 |Var x_reduction->(match find_in_memo  x_reduction acc with
                             |value -> value
-                            |_ -> raise Echec_reduction)
-                |_ -> print_endline("je uis la 2");raise Echec_reduction)
-  |Assign (t1, t2) -> let e1: pterm = (reduction t1 acc) and e2: pterm= (reduction t2 acc)  in
-                      (match e1 with 
+                            |_ -> print_endline("je uis la ");raise Echec_reduction)
+                |_ -> print_endline("je uis la "); raise Echec_reduction)
+  |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc)  in
+                     (match t1 with 
                         |Ref p -> e2
-                        |_ -> raise Echec_reduction)
+                        |_ ->  print_endline("je uis la "); raise Echec_reduction)
   |Unit -> Unit
   | _ -> t
 
@@ -259,7 +257,7 @@ and substitution terme x nterm=
   | _  -> terme
 
 
-(****************************************** III. Typage ******************************************)
+(****************************************** IIII. Typage ******************************************)
 (* genere des equations de typage à partir d'un terme *)  
 (* ty pour type attendue *)
 let map_liste_gen_equa (l : pterm liste) ty e f =
@@ -339,7 +337,14 @@ let rec trouve_but (e : equa_zip) (but : string) =
   | (_, (Var v, t)::_) when v = but -> t
   | (_, (t, Var v)::_) when v = but -> t 
   | (e1, c::e2) -> trouve_but (c::e1, e2) but 
-                     
+  
+  
+(******************************************  Unification ******************************************)
+let substituion_forall var ty =
+  let new_ty = ref ty in 
+      List.iter (function f -> let nv = Var(nouvelle_var()) in new_ty:= substitue_type ty f nv) var; !new_ty
+;;
+
 (* résout un système d'équations *)  (*(((ptype * ptype)list *  (ptype * ptype)list))===> ([(type1, type2)], [(type3, type4)]* )*) 
 let rec unification (e : equa_zip) (but : string) : ptype = 
   match e with 
@@ -366,6 +371,11 @@ let rec unification (e : equa_zip) (but : string) : ptype =
     (* types à droite pas à gauche : échec *)
   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
   | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar Diawara *)
+  (*3.2.1*)
+  | (e1,((Forall(set1, t1), Forall(set2, t2))::e2)) -> unification(e1,(substituion_forall set1 t1, substituion_forall set2 t2)::e2) but 
+  | (e1,((t3, Forall(set2, t2))::e2)) -> unification(e1,((substituion_forall set2 t2),t3)::e2) but 
+  | (e1,((Forall(set1, t1), t3)::e2)) -> unification(e1,(t3, (substituion_forall set1 t1))::e2) but 
+  (*4.2.1*)
   | (e1,(RefT t1,RefT t2)::e2) -> unification (e1,(t1,t2)::e2) but
   | (e1,(UnitT ,UnitT )::e2) -> unification (e1,e2) but
 

@@ -61,7 +61,7 @@ let ex_deref_2 : Typeur.pterm =Typeur.DeRef(ex_ref_2)   (* on ne peut pas dref u
 let ex_deref_3 : Typeur.pterm =Typeur.DeRef(ex_ref_3)
 let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRef((Var "y")))
 let ex_assigne : Typeur.pterm =Typeur.Abs("x", Typeur.Assign((Typeur.Var("x"), (Typeur.Add(Typeur.DeRef(Typeur.Var("x")), Typeur.N 3)))))
-let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Var "f"), Typeur.Ref(Typeur.N 2)))
+let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Typeur.Var "f"), Typeur.Ref(Typeur.N 2)))
 
 let main () =
   (**
@@ -163,6 +163,7 @@ let main () =
   print_endline(Typeur.inference ex_assigne);
   print_endline "======================";
   print_endline(Typeur.print_term ex_assigne2);
+  print_endline(Typeur.print_term  (Typeur.reduction ex_assigne2 []));
   print_endline(Typeur.inference ex_assigne2);
   print_endline "======================"
 
