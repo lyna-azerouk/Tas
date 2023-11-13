@@ -184,6 +184,7 @@ let rec find_in_memo (s :string) acc =
 let rec reduction (t: pterm)  acc: pterm=
   match t with 
   App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
+  | App(Pfix(s, Abs(var, t1)), t2) ->  reduction (Pfix (s, (substitution t1 var t2))) ((var, t2)::acc)  
   | App (m, n) ->  
       let m' = reduction m acc in
       let n' = reduction n acc in
@@ -216,13 +217,16 @@ let rec reduction (t: pterm)  acc: pterm=
   |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
                           (match cond_reduced with 
                               | (N 0)-> (reduction t1 acc)
+                              | Var s -> (match find_in_memo  s acc with
+                                             |(N 0) -> (reduction t1 acc)
+                                             |_  -> print_endline(print_term t2);(reduction t2 acc)  )
                               | _ -> (reduction t2 acc))
   |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
                           (match cond_reduced with 
                           | ListP(Vide) -> (reduction t1 acc)
                           | ListP(_) -> (reduction t2 acc)
                           | _ -> raise Echec_reduction)
-  |Pfix(s ,t1) ->   substitution t1 s   (Pfix(s ,t1))
+  |Pfix(s ,t1) -> reduction   (substitution t1 s (Pfix(s ,t1))) acc
   | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
                 |Cons (l1, ls) -> ListP(Cons (reduction l1 acc, map_list ls acc reduction));)
@@ -256,13 +260,13 @@ and substitution terme x nterm=
   | Var y ->  Var y
   | N v -> (N v)
   | App (t1, t2) ->  App (substitution t1 x nterm, substitution t2 x nterm)
-  | Abs (y, m) when y <> x ->   Abs (y, substitution m x nterm)   (*raise TimeOut*)
+  | Abs (y, m) when y <> x ->  print_endline(print_term m); Abs (y, substitution m x nterm)   (*raise TimeOut*)
   | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
   | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
   | Ref t1 -> Ref (substitution t1 x nterm)
   | DeRef t1 ->DeRef (substitution t1 x nterm)
   | Assign (t1, t2) ->  (Assign(t1, substitution t2 x nterm))
-  |Pfix (s,t1) ->  Pfix (s, substitution t1 x nterm)
+  |Pfix (s,t1) -> print_endline("je uis la "); Pfix (s, substitution t1 x nterm)
   | _  -> terme
 
 
@@ -277,7 +281,6 @@ let map_liste_gen_equa (l : pterm liste) ty e f =
     | Cons (l, ls) -> let nhv : string = nouvelle_var() in
       (ty, Tliste(Var nhv))::(f l (Var nhv) e)@(aux_map ls (Tliste(Var nhv)) e f)
             in aux_map l ty e f
-
 
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
@@ -305,11 +308,12 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
    let varh :string = nouvelle_var() in
      let eq1: equa =genere_equa t1 (Var varh)  e and eq2: equa =genere_equa t2 (Var varh) e in 
                 ((ty, (Arr(Nat, (Var varh))))::cond@ (eq1@eq2)))
-
   |Iete (condition, t1, t2) ->(let nvh1: string =nouvelle_var() in
     let cond: equa = genere_equa condition (Tliste(Var (nouvelle_var()))) e in  
     let eq1 : equa =genere_equa t1 (Var nvh1) e and eq2: equa =genere_equa t2 (Var nvh1) e in 
         ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
+  |Pfix (s, t1) -> (let nv: string  =  nouvelle_var() in 
+                  (ty, (Var nv))::(genere_equa t1 (Var nv) ((s, Var nv)::e)))
   |Let (s, e1, e2) -> (let nvh :  string = nouvelle_var() in
     let var_ptype : ptype = (Var  nvh) in
     let nvh2 : string = nouvelle_var() in
@@ -393,6 +397,5 @@ let inference (t : pterm) : string =
   let e : equa_zip = ([], genere_equa t (Var "but") []) in
   try (let res = unification e "but" in
        (print_term t)^" ***TYPABLE*** avec le type "^(print_type res))
-  with Echec_unif bla -> (print_term t)^" ***PAS TYPABLE*** : "^bla
-                         
+  with Echec_unif bla -> (print_term t)^" ***PAS TYPABLE*** : "^bla                   
 end

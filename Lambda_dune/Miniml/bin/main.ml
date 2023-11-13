@@ -62,8 +62,10 @@ let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRe
 let ex_assigne : Typeur.pterm =Typeur.Abs("x", Typeur.Assign((Typeur.Var("x"), (Typeur.Add(Typeur.DeRef(Typeur.Var("x")), Typeur.N 3)))))
 let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Typeur.Var "f"), Typeur.Ref(Typeur.N 2)))
 let ex_assigne3: Typeur.pterm = Typeur.App(ex_assigne, Typeur.Ref(Typeur.N 2))
-let recursive_factorial = Typeur.Abs("x", Typeur.Pfix("f", Typeur.Abs("n", Typeur.Izte(Var "n",Typeur.N 1, Typeur.Add(Typeur.Var "n", Typeur.App(Typeur.Var "f", Typeur.Sou(Typeur.Var "n", Typeur.N 1))))))) 
-let  eval_recursive_factorial= (Typeur.App(Typeur.Pfix("f", recursive_factorial),Typeur.N 3))
+let recursive_factorial = Typeur.Pfix("f", Typeur.Abs("n", Typeur.Izte(Typeur.Var "n",Typeur.N 1,  Typeur.App(Typeur.Var "f", Typeur.Sou(Typeur.Var "n", Typeur.N 1)))))
+let  eval_recursive_factorial= (Typeur.App(recursive_factorial,Typeur.N 0))
+let infinite_recursion =Typeur.Abs("f", Typeur.App(Typeur.Var "f", Typeur.Var "f"))
+let example_eval_rec = Typeur.App(Typeur.Pfix("f", infinite_recursion), Typeur.N 5)
 
 
 let main () =
@@ -173,8 +175,9 @@ let main () =
   (**print_endline(Typeur.print_term  (Typeur.reduction ex_assigne [])) ;**)
   print_endline(Typeur.inference ex_assigne2);
   print_endline "======================";
-  print_endline(Typeur.print_term recursive_factorial);
-  print_endline(Typeur.print_term  (Typeur.reduction eval_recursive_factorial [])) 
+  print_endline(Typeur.print_term eval_recursive_factorial);
+  print_endline(Typeur.print_term  (Typeur.reduction eval_recursive_factorial []));
+  print_endline(Typeur.inference   eval_recursive_factorial )
 
   
 
