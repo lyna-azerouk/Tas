@@ -48,7 +48,6 @@ let ex_ifz_reduce : Typeur.pterm = Typeur.reduction ex_ifz1 []
 let ex_ife :Typeur.pterm = Typeur.Iete(ex_listP1, ex_id, ex_sous)
 let ex_ife_reduce : Typeur.pterm = Typeur.reduction ex_ife []
 let ex_let :Typeur.pterm =Typeur.Let("x", ex_id, ex_k)
-let ex_let_reduce : Typeur.pterm = Typeur.reduction ex_let []
 let ex_let_ab : Typeur.pterm = Typeur.Let ("x", Typeur.N 2, Typeur.App (Typeur.Abs ("y", Typeur.Add (Typeur.Var "y", Typeur.Var "x")), Typeur.N 10))
 let ex_liste_ab : Typeur.pterm = Typeur.ListP(Typeur.Vide)
 let ex_id_y : Typeur.pterm = Typeur.Abs ("y", Typeur.Var "x") 
@@ -62,7 +61,9 @@ let ex_deref_3 : Typeur.pterm =Typeur.DeRef(ex_ref_3)
 let ex_ref2 : Typeur.pterm = Typeur.Let("x",Typeur.DeRef((Var "x")), Typeur.DeRef((Var "y")))
 let ex_assigne : Typeur.pterm =Typeur.Abs("x", Typeur.Assign((Typeur.Var("x"), (Typeur.Add(Typeur.DeRef(Typeur.Var("x")), Typeur.N 3)))))
 let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Typeur.Var "f"), Typeur.Ref(Typeur.N 2)))
-
+let ex_assigne3: Typeur.pterm = Typeur.App(ex_assigne, Typeur.Ref(Typeur.N 2))
+let recursive_factorial = Typeur.Abs("x", Typeur.Pfix("f", Typeur.Abs("n", Typeur.Izte(Var "n",Typeur.N 1, Typeur.Add(Typeur.Var "n", Typeur.App(Typeur.Var "f", Typeur.Sou(Typeur.Var "n", Typeur.N 1))))))) 
+let  eval_recursive_factorial= (Typeur.App(Typeur.Pfix("f", recursive_factorial),Typeur.N 5))
 let main () =
   (**
   print_endline "======================";
@@ -75,7 +76,6 @@ let main () =
   print_endline ex_zero_string;*)
   (*print_endline ("term "^Typeur.print_term ex_omega);*)
   (*print_endline("reduction"^Typeur.print_term (Typeur.reduction  ex_omega));*)
-  print_endline "======================";
   print_endline "======================";
   print_endline (Typeur.print_term ex_id );
   print_endline (Typeur.print_term convertie_bis);
@@ -96,7 +96,7 @@ let main () =
   print_endline (Typeur.print_term ex_ife_reduce);
   print_endline "======================";
   print_endline (Typeur.print_term ex_let); 
-  print_endline (Typeur.print_term ex_let_reduce);
+  print_endline (Typeur.print_term  (Typeur.reduction ex_let []));
   print_endline "======================";
   print_endline (Typeur.print_term ex_let_ab);
   print_endline (Typeur.print_term (Typeur.reduction ex_let_ab []));
@@ -160,13 +160,19 @@ let main () =
   print_endline (Typeur.inference ex_deref_2);
   print_endline "======================";
   print_endline(Typeur.print_term ex_assigne);
+  (**print_endline(Typeur.print_term (Typeur.reduction ex_assigne [])) ;**)
   print_endline(Typeur.inference ex_assigne);
   print_endline "======================";
+  print_endline(Typeur.print_term ex_assigne3);
+  print_endline(Typeur.print_term  (Typeur.reduction ex_assigne3 [])) ;
+  print_endline(Typeur.inference ex_assigne3);
+  print_endline "======================";
   print_endline(Typeur.print_term ex_assigne2);
-  print_endline(Typeur.print_term  (Typeur.reduction ex_assigne2 []));
+  (**print_endline(Typeur.print_term  (Typeur.reduction ex_assigne [])) ;**)
   print_endline(Typeur.inference ex_assigne2);
-  print_endline "======================"
-
+  print_endline "======================";
+  print_endline(Typeur.print_term recursive_factorial);
+  print_endline(Typeur.print_term  (Typeur.reduction eval_recursive_factorial [])) 
 
   
 

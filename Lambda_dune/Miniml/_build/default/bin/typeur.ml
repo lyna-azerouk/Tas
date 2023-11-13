@@ -19,7 +19,7 @@ type pterm = Var of string
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
  | Iete of pterm * pterm * pterm 
- | Pfix of string * pterm  *pterm
+ | Pfix  of string * pterm
  | Let of string * pterm * pterm 
  (* 4.1.1 *)
  | Ref of  pterm 
@@ -50,7 +50,7 @@ and print_term (t : pterm) : string =
     | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ " then  " ^(print_term t1)^" else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
-    | Pfix (s , t1 ,t2)  -> "let rec"^s^(print_term t1)^ " in"^(print_term t2)
+    | Pfix (s , t1)  -> "let rec "^s^ " ="^(print_term t1)
     (* 4.1.2 *) 
     | Ref e ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
@@ -151,6 +151,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
                         (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                        
   |Ref  e -> Ref (alpha_conv_bis e acc)
   |DeRef e -> DeRef (alpha_conv_bis e acc)
+  |Pfix (s, t1) -> Pfix (s, alpha_conv_bis t1 acc)
   |Unit -> Unit
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
@@ -189,11 +190,11 @@ let rec reduction (t: pterm)  acc: pterm=
       (match m' with 
           |Abs(s, t1) ->App ((substitution t1 s m'), n')
           |_ -> App (m', n'))
-  | Abs (x, m) -> Abs (x, reduction m acc)
+  | Abs (x, m) -> Abs (x, reduction m acc)   (*valeur par defaut pour x *)
   | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc and  val_2 : pterm = reduction t2 acc in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
-                      |_ ->print_endline("je uis la "); raise Echec_reduction)
+                      |_ ->  raise Echec_reduction)
   |N t1 -> (N t1)
   |Var s -> (Var s)
   |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc and val_2 : pterm = reduction t2 acc in 
@@ -221,26 +222,30 @@ let rec reduction (t: pterm)  acc: pterm=
                           | ListP(Vide) -> (reduction t1 acc)
                           | ListP(_) -> (reduction t2 acc)
                           | _ -> raise Echec_reduction)
+  |Pfix(s ,t1) ->   substitution t1 s   (Pfix(s ,t1))
   | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
                 |Cons (l1, ls) -> ListP(Cons (reduction l1 acc, map_list ls acc reduction));)
   |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
-                        match reduce_t1 with 
-                          |Ref f ->print_endline("je uis la ");(reduction t2 ((s,f)::acc))
-                          |_ ->print_endline("je uis la "); reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) (*substitution de s dans t2*)    
+                (match reduce_t1 with 
+                  |Ref f -> (reduction t2 ((s,f)::acc))
+                  |Abs(s,n) -> (match t2 with 
+                                |App(val1, val2)->print_endline("jeuis la 1");  substitution (Abs(s,n)) s val2
+                                |_->print_endline("jeuis la 2"); raise Echec_reduction)
+                  |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) )
   |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
-              print_endline("je uis la ");Ref(e_reduction) 
+              Ref(e_reduction) 
   |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
               (match e_reduction with 
                 |Ref e -> e
                 |Var x_reduction->(match find_in_memo  x_reduction acc with
-                            |value -> value
-                            |_ -> print_endline("je uis la ");raise Echec_reduction)
-                |_ -> print_endline("je uis la "); raise Echec_reduction)
+                            |value -> value )
+                |_ -> print_endline("jeuis la 4"); raise Echec_reduction)
   |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc)  in
                      (match t1 with 
-                        |Ref p -> e2
-                        |_ ->  print_endline("je uis la "); raise Echec_reduction)
+                        |Ref p ->   (Assign(t1, t2)) 
+                        |Var x -> Assign (t1, t2) 
+                        |_ -> print_endline("jeuis la 5"); raise Echec_reduction)
   |Unit -> Unit
   | _ -> t
 
@@ -254,6 +259,10 @@ and substitution terme x nterm=
   | Abs (y, m) when y <> x ->   Abs (y, substitution m x nterm)   (*raise TimeOut*)
   | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
   | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
+  | Ref t1 -> Ref (substitution t1 x nterm)
+  | DeRef t1 ->DeRef (substitution t1 x nterm)
+  | Assign (t1, t2) ->  (Assign(t1, substitution t2 x nterm))
+  |Pfix (s,t1) ->  Pfix (s, substitution t1 x nterm)
   | _  -> terme
 
 
