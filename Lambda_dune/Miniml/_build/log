@@ -3,7 +3,7 @@
 # Shared cache: disabled
 # Workspace root: /Users/linaazerouk/Documents/M2/Tas/Lambda_dune/Miniml
 # Auto-detected concurrency: 8
-$ /opt/homebrew/bin/ocamlc.opt -config > /var/folders/yw/d8j7d04955qb2skz9_nc9dqw0000gn/T/dune_5f8183_output
+$ /opt/homebrew/bin/ocamlc.opt -config > /var/folders/yw/d8j7d04955qb2skz9_nc9dqw0000gn/T/dune_ea880a_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -97,7 +97,150 @@ $ /opt/homebrew/bin/ocamlc.opt -config > /var/folders/yw/d8j7d04955qb2skz9_nc9dq
 #      }
 #  ; instrument_with = []
 #  }
-$ (cd _build/default && /opt/homebrew/bin/ocamldep.opt -modules -impl bin/main.ml) > _build/default/bin/.main.eobjs/dune__exe__Main.impl.d
+$ (cd _build/default && /opt/homebrew/bin/ocamldep.opt -modules -impl bin/typeur.ml) > _build/default/bin/.main.eobjs/dune__exe__Typeur.impl.d
+$ (cd _build/default && /opt/homebrew/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -I bin/.main.eobjs/byte -I lib/.Miniml.objs/byte -no-alias-deps -opaque -open Dune__exe -o bin/.main.eobjs/byte/dune__exe__Typeur.cmo -c -impl bin/typeur.ml)
+> File "bin/typeur.ml", line 302, characters 62-214:
+> 302 |     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
+>                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> Warning 50 [unexpected-docstring]: unattached documentation comment (ignored)
+> File "bin/typeur.ml", lines 129-158, characters 2-90:
+> 129 | ..match l with
+> 130 |   | Var variable_to_replace ->
+> 131 |     (match acc with
+> 132 |     | [] ->
+> 133 |         let nv = nouvelle_var () in
+> ...
+> 155 |   |Unit -> Unit
+> 156 |   | ListP l ->match l with 
+> 157 |              |Vide ->ListP(Vide)
+> 158 |              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> Assign (_, _)
+> File "bin/typeur.ml", line 215, characters 15-16:
+> 215 |               |_ -> raise Echec_reduction)
+>                      ^
+> Warning 11 [redundant-case]: this match case is unused.
+> File "bin/typeur.ml", lines 210-215, characters 14-42:
+> 210 | ..............(match t1 with 
+> 211 |               |ListP(Vide)-> ListP(Vide)
+> 212 |               |ListP(Cons(_,rest)) -> match rest with 
+> 213 |                                     |Vide -> ListP(Vide)
+> 214 |                                     |Cons(l1,ls) -> ListP(Cons ((reduction l1 acc), (map_list ls acc reduction)));
+> 215 |               |_ -> raise Echec_reduction)
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> (Unit|Var _|App (_, _)|Abs (_, _)|N _|Add (_, _)|Sou (_, _)|Hd _|Tail _|
+> Izte (_, _, _)|Iete (_, _, _)|Pfix (_, _)|Let (_, _, _)|Ref _|DeRef _|
+> Assign (_, _))
+> File "bin/typeur.ml", line 254, characters 4-5:
+> 254 |   | _ -> t
+>           ^
+> Warning 11 [redundant-case]: this match case is unused.
+> File "bin/typeur.ml", lines 301-348, characters 2-41:
+> 301 | ..match te with 
+> 302 |     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
+> 303 |   | App (t1, t2) -> let nv : string = nouvelle_var () in 
+> 304 |       let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in  (* le type  attendue de de t1 est un Arr(Var nv), ty) *)
+> 305 |       let eq2 : equa = genere_equa t2 (Var nv) e in
+> ...
+> 345 |                 let eq1: equa= (genere_equa t1 (RefT (Var nvh))  e) in 
+> 346 |                   (ty, (Var nvh))::eq1
+> 347 |   |Assign (t1, t2) -> let nv: string = nouvelle_var() in (let eq1: equa = (genere_equa t1 (RefT (Var nv)) e) and  eq2: equa = (genere_equa t2 (Var nv ) e ) in 
+> 348 |                   (ty, UnitT)::(eq1@eq2))
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> Unit
+> File "bin/typeur.ml", line 356, characters 8-17:
+> 356 | let rec rembobine (e : equa_zip) =
+>               ^^^^^^^^^
+> Warning 39 [unused-rec-flag]: unused rec flag.
+> File "bin/typeur.ml", lines 382-412, characters 2-55:
+> 382 | ..match e with 
+> 383 |     (* on a passé toutes les équations : succes *)
+> 384 |     (_, []) -> (try trouve_but (rembobine e) but with VarPasTrouve -> raise (Echec_unif "but pas trouvé"))
+> 385 |     (* equation avec but : on passe *)
+> 386 |   | (e1, (Var v1, t2)::e2) when v1 = but ->  unification ((Var v1, t2)::e1, e2) but
+> ...
+> 409 |   | (e1,((Forall(set1, t1), t3)::e2)) -> unification(e1,(t3, (substituion_forall set1 t1))::e2) but 
+> 410 |   (*4.2.1*)
+> 411 |   | (e1,(RefT t1,RefT t2)::e2) -> unification (e1,(t1,t2)::e2) but
+> 412 |   | (e1,(UnitT ,UnitT )::e2) -> unification (e1,e2) but
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> (_, (Tliste _, (UnitT|RefT _))::_)
+> File "bin/typeur.ml", line 97, characters 14-15:
+> 97 |   | (v1, t1)::q when v1 = v -> t1
+>                    ^
+> Warning 27 [unused-var-strict]: unused variable q.
+> File "bin/typeur.ml", line 120, characters 11-14:
+> 120 |   |Forall (set, t1) -> t1
+>                  ^^^
+> Warning 27 [unused-var-strict]: unused variable set.
+> File "bin/typeur.ml", line 180, characters 23-27:
+> 180 |   | (variable, value)::tail when  s= variable -> value
+>                              ^^^^
+> Warning 27 [unused-var-strict]: unused variable tail.
+> File "bin/typeur.ml", line 181, characters 5-13:
+> 181 |   | (variable, value)::tail  ->  find_in_memo s tail
+>            ^^^^^^^^
+> Warning 27 [unused-var-strict]: unused variable variable.
+> File "bin/typeur.ml", line 181, characters 15-20:
+> 181 |   | (variable, value)::tail  ->  find_in_memo s tail
+>                      ^^^^^
+> Warning 27 [unused-var-strict]: unused variable value.
+> File "bin/typeur.ml", line 237, characters 37-41:
+> 237 |                                 |App(val1, val2)->print_endline("jeuis la 1");  substitution (Abs(s,n)) s val2
+>                                            ^^^^
+> Warning 27 [unused-var-strict]: unused variable val1.
+> File "bin/typeur.ml", line 248, characters 26-28:
+> 248 |   |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc)  in
+>                                 ^^
+> Warning 26 [unused-var]: unused variable e2.
+> File "bin/typeur.ml", line 250, characters 29-30:
+> 250 |                         |Ref p ->   (Assign(t1, t2)) 
+>                                    ^
+> Warning 27 [unused-var-strict]: unused variable p.
+> File "bin/typeur.ml", line 251, characters 29-30:
+> 251 |                         |Var x -> Assign (t1, t2) 
+>                                    ^
+> Warning 27 [unused-var-strict]: unused variable x.
+> File "bin/typeur.ml", line 335, characters 8-12:
+> 335 |     let nvh2 : string = nouvelle_var() in
+>               ^^^^
+> Warning 26 [unused-var]: unused variable nvh2.
+> File "bin/typeur.ml", line 396, characters 5-7:
+> 396 |   | (e1, (Arr (_,_), t3)::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 396, characters 26-28:
+> 396 |   | (e1, (Arr (_,_), t3)::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>                                 ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 398, characters 5-7:
+> 398 |   | (e1, (t3, Arr (_,_))::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 398, characters 26-28:
+> 398 |   | (e1, (t3, Arr (_,_))::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>                                 ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 402, characters 5-7:
+> 402 |   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 402, characters 20-22:
+> 402 |   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
+>                           ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 404, characters 5-7:
+> 404 |   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 404, characters 20-22:
+> 404 |   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+>                           ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
 $ (cd _build/default && /opt/homebrew/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I bin/.main.eobjs/byte -I bin/.main.eobjs/native -I lib/.Miniml.objs/byte -I lib/.Miniml.objs/native -intf-suffix .ml -no-alias-deps -opaque -open Dune__exe -o bin/.main.eobjs/native/dune__exe__Main.cmx -c -impl bin/main.ml)
 > File "bin/main.ml", lines 72-80, characters 2-33:
 > 72 | ..(**
@@ -154,4 +297,147 @@ $ (cd _build/default && /opt/homebrew/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@
 > 68 | let example_eval_rec = Typeur.App(Typeur.Pfix("f", infinite_recursion), Typeur.N 5)
 >          ^^^^^^^^^^^^^^^^
 > Warning 32 [unused-value-declaration]: unused value example_eval_rec.
+$ (cd _build/default && /opt/homebrew/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I bin/.main.eobjs/byte -I bin/.main.eobjs/native -I lib/.Miniml.objs/byte -I lib/.Miniml.objs/native -intf-suffix .ml -no-alias-deps -opaque -open Dune__exe -o bin/.main.eobjs/native/dune__exe__Typeur.cmx -c -impl bin/typeur.ml)
+> File "bin/typeur.ml", line 302, characters 62-214:
+> 302 |     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
+>                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> Warning 50 [unexpected-docstring]: unattached documentation comment (ignored)
+> File "bin/typeur.ml", lines 129-158, characters 2-90:
+> 129 | ..match l with
+> 130 |   | Var variable_to_replace ->
+> 131 |     (match acc with
+> 132 |     | [] ->
+> 133 |         let nv = nouvelle_var () in
+> ...
+> 155 |   |Unit -> Unit
+> 156 |   | ListP l ->match l with 
+> 157 |              |Vide ->ListP(Vide)
+> 158 |              |Cons (l1, ls)-> ListP(Cons((alpha_conv_bis l1 acc), alpha_conv_list ls acc))
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> Assign (_, _)
+> File "bin/typeur.ml", line 215, characters 15-16:
+> 215 |               |_ -> raise Echec_reduction)
+>                      ^
+> Warning 11 [redundant-case]: this match case is unused.
+> File "bin/typeur.ml", lines 210-215, characters 14-42:
+> 210 | ..............(match t1 with 
+> 211 |               |ListP(Vide)-> ListP(Vide)
+> 212 |               |ListP(Cons(_,rest)) -> match rest with 
+> 213 |                                     |Vide -> ListP(Vide)
+> 214 |                                     |Cons(l1,ls) -> ListP(Cons ((reduction l1 acc), (map_list ls acc reduction)));
+> 215 |               |_ -> raise Echec_reduction)
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> (Unit|Var _|App (_, _)|Abs (_, _)|N _|Add (_, _)|Sou (_, _)|Hd _|Tail _|
+> Izte (_, _, _)|Iete (_, _, _)|Pfix (_, _)|Let (_, _, _)|Ref _|DeRef _|
+> Assign (_, _))
+> File "bin/typeur.ml", line 254, characters 4-5:
+> 254 |   | _ -> t
+>           ^
+> Warning 11 [redundant-case]: this match case is unused.
+> File "bin/typeur.ml", lines 301-348, characters 2-41:
+> 301 | ..match te with 
+> 302 |     Var v -> let tv : ptype = cherche_type v e in [(ty, tv)]  (** La fonction renvoie une liste contenant une seule équation de type qui indique que  le type attendu ty est équivalent au type de la variable v. *)
+> 303 |   | App (t1, t2) -> let nv : string = nouvelle_var () in 
+> 304 |       let eq1 : equa = genere_equa t1 (Arr (Var nv, ty)) e in  (* le type  attendue de de t1 est un Arr(Var nv), ty) *)
+> 305 |       let eq2 : equa = genere_equa t2 (Var nv) e in
+> ...
+> 345 |                 let eq1: equa= (genere_equa t1 (RefT (Var nvh))  e) in 
+> 346 |                   (ty, (Var nvh))::eq1
+> 347 |   |Assign (t1, t2) -> let nv: string = nouvelle_var() in (let eq1: equa = (genere_equa t1 (RefT (Var nv)) e) and  eq2: equa = (genere_equa t2 (Var nv ) e ) in 
+> 348 |                   (ty, UnitT)::(eq1@eq2))
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> Unit
+> File "bin/typeur.ml", line 356, characters 8-17:
+> 356 | let rec rembobine (e : equa_zip) =
+>               ^^^^^^^^^
+> Warning 39 [unused-rec-flag]: unused rec flag.
+> File "bin/typeur.ml", lines 382-412, characters 2-55:
+> 382 | ..match e with 
+> 383 |     (* on a passé toutes les équations : succes *)
+> 384 |     (_, []) -> (try trouve_but (rembobine e) but with VarPasTrouve -> raise (Echec_unif "but pas trouvé"))
+> 385 |     (* equation avec but : on passe *)
+> 386 |   | (e1, (Var v1, t2)::e2) when v1 = but ->  unification ((Var v1, t2)::e1, e2) but
+> ...
+> 409 |   | (e1,((Forall(set1, t1), t3)::e2)) -> unification(e1,(t3, (substituion_forall set1 t1))::e2) but 
+> 410 |   (*4.2.1*)
+> 411 |   | (e1,(RefT t1,RefT t2)::e2) -> unification (e1,(t1,t2)::e2) but
+> 412 |   | (e1,(UnitT ,UnitT )::e2) -> unification (e1,e2) but
+> Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+> Here is an example of a case that is not matched:
+> (_, (Tliste _, (UnitT|RefT _))::_)
+> File "bin/typeur.ml", line 97, characters 14-15:
+> 97 |   | (v1, t1)::q when v1 = v -> t1
+>                    ^
+> Warning 27 [unused-var-strict]: unused variable q.
+> File "bin/typeur.ml", line 120, characters 11-14:
+> 120 |   |Forall (set, t1) -> t1
+>                  ^^^
+> Warning 27 [unused-var-strict]: unused variable set.
+> File "bin/typeur.ml", line 180, characters 23-27:
+> 180 |   | (variable, value)::tail when  s= variable -> value
+>                              ^^^^
+> Warning 27 [unused-var-strict]: unused variable tail.
+> File "bin/typeur.ml", line 181, characters 5-13:
+> 181 |   | (variable, value)::tail  ->  find_in_memo s tail
+>            ^^^^^^^^
+> Warning 27 [unused-var-strict]: unused variable variable.
+> File "bin/typeur.ml", line 181, characters 15-20:
+> 181 |   | (variable, value)::tail  ->  find_in_memo s tail
+>                      ^^^^^
+> Warning 27 [unused-var-strict]: unused variable value.
+> File "bin/typeur.ml", line 237, characters 37-41:
+> 237 |                                 |App(val1, val2)->print_endline("jeuis la 1");  substitution (Abs(s,n)) s val2
+>                                            ^^^^
+> Warning 27 [unused-var-strict]: unused variable val1.
+> File "bin/typeur.ml", line 248, characters 26-28:
+> 248 |   |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc)  in
+>                                 ^^
+> Warning 26 [unused-var]: unused variable e2.
+> File "bin/typeur.ml", line 250, characters 29-30:
+> 250 |                         |Ref p ->   (Assign(t1, t2)) 
+>                                    ^
+> Warning 27 [unused-var-strict]: unused variable p.
+> File "bin/typeur.ml", line 251, characters 29-30:
+> 251 |                         |Var x -> Assign (t1, t2) 
+>                                    ^
+> Warning 27 [unused-var-strict]: unused variable x.
+> File "bin/typeur.ml", line 335, characters 8-12:
+> 335 |     let nvh2 : string = nouvelle_var() in
+>               ^^^^
+> Warning 26 [unused-var]: unused variable nvh2.
+> File "bin/typeur.ml", line 396, characters 5-7:
+> 396 |   | (e1, (Arr (_,_), t3)::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 396, characters 26-28:
+> 396 |   | (e1, (Arr (_,_), t3)::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>                                 ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 398, characters 5-7:
+> 398 |   | (e1, (t3, Arr (_,_))::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 398, characters 26-28:
+> 398 |   | (e1, (t3, Arr (_,_))::e2) -> raise (Echec_unif ("type fleche non-unifiable avec "^(print_type t3)))     
+>                                 ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 402, characters 5-7:
+> 402 |   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 402, characters 20-22:
+> 402 |   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
+>                           ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
+> File "bin/typeur.ml", line 404, characters 5-7:
+> 404 |   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+>            ^^
+> Warning 27 [unused-var-strict]: unused variable e1.
+> File "bin/typeur.ml", line 404, characters 20-22:
+> 404 |   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+>                           ^^
+> Warning 27 [unused-var-strict]: unused variable e2.
 $ (cd _build/default && /opt/homebrew/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -o bin/main.exe lib/Miniml.cmxa bin/.main.eobjs/native/dune__exe.cmx bin/.main.eobjs/native/dune__exe__Typeur.cmx bin/.main.eobjs/native/dune__exe__Main.cmx)

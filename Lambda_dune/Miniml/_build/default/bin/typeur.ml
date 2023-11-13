@@ -281,6 +281,21 @@ let map_liste_gen_equa (l : pterm liste) ty e f =
     | Cons (l, ls) -> let nhv : string = nouvelle_var() in
       (ty, Tliste(Var nhv))::(f l (Var nhv) e)@(aux_map ls (Tliste(Var nhv)) e f)
             in aux_map l ty e f
+   
+let rec generalize_types (env : env) (equations ) : env =
+  match equations with
+  | [] -> env
+  | (t1, t2) :: rest ->
+      let generalized_env = generalize_type env t1 t2 in
+      generalize_types generalized_env rest
+
+and generalize_type (env : env) (t1 : ptype) (t2 : ptype) : env =
+  match (t1, t2) with
+  | Var v1, Var v2 when v1 = v2 -> env
+  | Var v, _ -> (v, t2) :: env
+  | _, Var v -> (v, t1) :: env
+  | _ -> env
+(* return all type variables of t*)
 
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   match te with 
@@ -291,7 +306,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
       eq1 @ eq2
   | Abs (x, t) -> let nv1 : string = nouvelle_var () 
       and nv2 : string = nouvelle_var () in
-      (ty, Arr (Var nv1, Var nv2))::(genere_equa t (Var nv2) ((x, Var nv1)::e))  
+      (ty, Arr (Forall ([], Var nv1),  Var nv2))::(genere_equa t (Var nv2) ((x,  Var nv1)::e))  
   | N _ -> [(ty, Nat)]
   | Add (t1, t2) -> let eq1 : equa = genere_equa t1 Nat e and eq2 : equa = genere_equa t2 Nat e in
       (ty, Nat)::(eq1 @ eq2) 
@@ -314,11 +329,15 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
         ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
   |Pfix (s, t1) -> (let nv: string  =  nouvelle_var() in 
                   (ty, (Var nv))::(genere_equa t1 (Var nv) ((s, Var nv)::e)))
+
   |Let (s, e1, e2) -> (let nvh :  string = nouvelle_var() in
     let var_ptype : ptype = (Var  nvh) in
     let nvh2 : string = nouvelle_var() in
-      let eq1 : equa = genere_equa e1 (Var nvh) e  and  eq2 : equa =  genere_equa (e2) ty  ((s, var_ptype)::e) in 
-          (ty, var_ptype)::(eq1@eq2))  
+      let eq1 : equa = genere_equa e1 (Var nvh) e  in 
+      let   new_env = generalize_types  ((s,(Var nvh))::e)  eq1 in
+          let eq2 : equa =  genere_equa e2 ty  (new_env@e) in 
+              (ty, var_ptype)::(eq1@eq2))  
+
   |Ref t1-> (let nvh : ptype = (Var (nouvelle_var())) in 
               let  var_type: ptype = (RefT nvh) and eq1 : equa = genere_equa t1 nvh e in 
                 (ty,var_type)::eq1)
@@ -327,8 +346,9 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
                   (ty, (Var nvh))::eq1
   |Assign (t1, t2) -> let nv: string = nouvelle_var() in (let eq1: equa = (genere_equa t1 (RefT (Var nv)) e) and  eq2: equa = (genere_equa t2 (Var nv ) e ) in 
                   (ty, UnitT)::(eq1@eq2))
-
-
+    
+  
+(******************************************  Unification ******************************************)
 (* zipper d'une liste d'équations *)
 type equa_zip = equa * equa  (*(((ptype * ptype)list *  (ptype * ptype)list))===> ([(type1, type2)], [(type3, type4)]* )*) 
   
@@ -352,7 +372,6 @@ let rec trouve_but (e : equa_zip) (but : string) =
   | (e1, c::e2) -> trouve_but (c::e1, e2) but 
   
   
-(******************************************  Unification ******************************************)
 let substituion_forall var ty =
   let new_ty = ref ty in 
       List.iter (function f -> let nv = Var(nouvelle_var()) in new_ty:= substitue_type ty f nv) var; !new_ty
