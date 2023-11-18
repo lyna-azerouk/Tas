@@ -183,13 +183,13 @@ let rec find_in_memo (s :string) acc =
 (* Evaluation*)
 let rec reduction (t: pterm)  acc env : pterm=
   match t with 
-  App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
-  (*| App(Pfix(s, Abs(var, t1,t3)), t2) ->  reduction (Pfix (s, (substitution t1 var t2)),t3) ((var, t2)::acc)  ((s,t1)::env) *)
+  App(Abs(s, t1), t2) -> (substitution t1 s t2)  ((s,t2)::acc) env  (* β-reduction  uniqument la suvstiution M'[N/x]*)
   | App (m, n) ->  
       let m' = reduction m acc env  in
       let n' = reduction n acc env  in
       (match m' with 
-          |Abs(s, t1) ->App ((substitution t1 s m'), n')
+          |Abs(s, t1) ->App ((substitution t1 s m' acc env ), n')
+          |Var s -> print_endline(print_term  (find_in_memo s env));  print_endline(print_term n'); reduction (App((find_in_memo s env), n')) ((s,n')::acc) env  (* cherche en memoire la fonction et on fait un appel recurssive sur *)
           |_ -> App (m', n'))
   | Abs (x, m) -> Abs (x, reduction m acc env )   (*valeur par defaut pour x *)
   | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc env  and  val_2 : pterm = reduction t2 acc  env in 
@@ -219,7 +219,7 @@ let rec reduction (t: pterm)  acc env : pterm=
                               | (N 0)-> (reduction t1 acc env)
                               | Var s -> (match find_in_memo  s acc with
                                              |(N 0) -> (reduction t1 acc env )
-                                             |_  -> print_endline(print_term t2);(reduction t2 acc env)  )
+                                             |_  -> (reduction t2 acc env)  )
                               | _ -> (reduction t2 acc env ))
   |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc env)in 
                           (match cond_reduced with 
@@ -227,7 +227,7 @@ let rec reduction (t: pterm)  acc env : pterm=
                           | ListP(_) -> (reduction t2 acc env )
                           | _ -> raise Echec_reduction)
   |Pfix(s ,t1,t2) ->  (match t1 with 
-                  |Abs(var, corps) -> substitution corps var (Pfix(s ,t1,t2)) 
+                  |Abs(var, corps) ->reduction (App(t1, t2)) acc ((s,t1)::env)
                   |_ -> raise Echec_reduction)
   | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
@@ -236,9 +236,9 @@ let rec reduction (t: pterm)  acc env : pterm=
                 (match reduce_t1 with 
                   |Ref f -> (reduction t2 ((s,f)::acc)) env
                   |Abs(s,n) -> (match t2 with 
-                                |App(val1, val2)->  substitution (Abs(s,n)) s val2
+                                |App(val1, val2)->  substitution (Abs(s,n)) s val2 acc env 
                                 |_-> raise Echec_reduction)
-                  |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc) env) s reduce_t1) ) ((s, reduce_t1)::acc) env) ) 
+                  |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc) env) s reduce_t1) acc env) ((s, reduce_t1)::acc) env) ) 
   |Ref t1 -> let e_reduction:pterm = reduction t1 acc  env in 
               Ref(e_reduction) 
   |DeRef e -> let e_reduction : pterm =(reduction e acc) env  in 
@@ -256,20 +256,22 @@ let rec reduction (t: pterm)  acc env : pterm=
   | _ -> t
 
 (*substitution de la variable x par le term "nterm"*)
-and substitution terme x nterm=
+and substitution terme x nterm  acc env =
   match terme with
   | Var y when y = x ->   nterm
   | Var y ->  Var y
   | N v -> (N v)
-  | App (t1, t2) ->  App (substitution t1 x nterm, substitution t2 x nterm)
-  | Abs (y, m) when y <> x ->  print_endline(print_term m); Abs (y, substitution m x nterm)   (*raise TimeOut*)
-  | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) [])
-  | Add(t1,t2)->  Add (substitution t1 x nterm, substitution t2 x nterm)
-  | Ref t1 -> Ref (substitution t1 x nterm)
-  | DeRef t1 ->DeRef (substitution t1 x nterm)
-  | Assign (t1, t2) ->  (Assign(t1, substitution t2 x nterm))
-  |Pfix (s,t1,t2) -> print_endline("je uis la "); Pfix (s, substitution t1 x nterm,t2)
-  | _  -> terme
+  | App (t1, t2) ->  App (substitution t1 x nterm acc env , substitution t2 x nterm acc env )
+  | Abs (y, m) when y <> x ->   Abs (y, substitution m x nterm acc env )   (*raise TimeOut*)
+  | Abs (_, _) ->  let z = nouvelle_var () in substitution (alpha_conv_bis terme []) x (alpha_conv_bis (Abs (z, Var z)) []) acc env 
+  | Add(t1,t2)->  Add (substitution t1 x nterm acc env , substitution t2 x nterm acc env )
+  | Sou (t1,t2) -> Sou (substitution t1 x nterm acc env , substitution t2 x nterm acc env )
+  | Ref t1 -> Ref (substitution t1 x nterm acc env )
+  | DeRef t1 ->DeRef (substitution t1 x nterm acc env )
+  | Assign (t1, t2) ->  (Assign(t1, substitution t2 x nterm acc env ))
+  | Pfix (s,t1,t2) -> Pfix (s, substitution t1 x nterm acc env ,t2)
+  | Izte (cond, t1, t2) -> reduction (Izte (cond, t1, (substitution t2 x nterm acc env )))   acc env
+  | _  ->   terme
 
 
 (****************************************** IIII. Typage ******************************************)
@@ -331,7 +333,7 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
         ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
 
   |Pfix (s, t1,t2) -> (let nv: string  =  nouvelle_var() in 
-                let eq1 : equa = genere_equa t1 ty ((s,(Var nv))::e)  in 
+                let eq1 : equa = genere_equa t1 ty ((s,(Var nv))::e)  in    (*To so :use forall for généralisation*)
                 let   new_env = generalize_types ((s,(Var nv))::e)  eq1 in
                 let eq2 : equa =  genere_equa t2 ty  (new_env@e) in 
                 (ty, Var(nv))::(eq1@eq2))
