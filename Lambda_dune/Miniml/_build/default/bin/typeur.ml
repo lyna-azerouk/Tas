@@ -19,7 +19,7 @@ type pterm = Var of string
  | Tail of  pterm  
  | Izte of pterm  * pterm * pterm 
  | Iete of pterm * pterm * pterm 
- | Pfix  of string * pterm
+ | Pfix  of string * pterm *pterm
  | Let of string * pterm * pterm 
  (* 4.1.1 *)
  | Ref of  pterm 
@@ -50,7 +50,7 @@ and print_term (t : pterm) : string =
     | Iete (condition, t1, t2) ->  "if "^(print_term condition)^ " then  " ^(print_term t1)^" else " ^(print_term t2)
     | ListP  ti -> print_term_liste ti
     | Let (s, t1, t2) ->  "let "^s^" = "^(print_term t1)^" in "^(print_term t2)
-    | Pfix (s , t1)  -> "let rec "^s^ " ="^(print_term t1)
+    | Pfix (s , t1,t2)  -> "let rec "^s^ " ="^(print_term t1) ^"in " ^s^" " ^(print_term t2)
     (* 4.1.2 *) 
     | Ref e ->  "(ref " ^(print_term e) ^")"
     | DeRef e -> "!" ^ (print_term e)
@@ -151,7 +151,7 @@ let rec alpha_conv_bis(l : pterm) acc: pterm =
                         (Let(nv, alpha_conv_bis t1 ((s, nv)::acc), alpha_conv_bis t2 ((s, nv)::acc)))                        
   |Ref  e -> Ref (alpha_conv_bis e acc)
   |DeRef e -> DeRef (alpha_conv_bis e acc)
-  |Pfix (s, t1) -> Pfix (s, alpha_conv_bis t1 acc)
+  |Pfix (s, t1, t2) -> Pfix (s, alpha_conv_bis t1 acc, alpha_conv_bis t2 acc )
   |Unit -> Unit
   | ListP l ->match l with 
              |Vide ->ListP(Vide)
@@ -167,11 +167,11 @@ and alpha_conv_list (lst : pterm liste) acc : pterm liste =
 
 (****************************************** III. Evaluation ***************************************************************************************)
 (* fonction   map sur les liste *)
-let map_list (lst :pterm liste) acc f= 
+let map_list (lst :pterm liste) acc  f = 
   let rec map_list_aux l f  =
      match l with 
      | Vide -> Vide
-     | Cons (t1, ls)->Cons((f t1 acc), (map_list_aux ls f ))
+     | Cons (t1, ls)->Cons((f t1 acc []), (map_list_aux ls f ))
         in map_list_aux lst f 
 
 let rec find_in_memo (s :string) acc = 
@@ -181,75 +181,77 @@ let rec find_in_memo (s :string) acc =
   | (variable, value)::tail  ->  find_in_memo s tail
 
 (* Evaluation*)
-let rec reduction (t: pterm)  acc: pterm=
+let rec reduction (t: pterm)  acc env : pterm=
   match t with 
   App(Abs(s, t1), t2) -> (substitution t1 s t2)  (* β-reduction  uniqument la suvstiution M'[N/x]*)
-  | App(Pfix(s, Abs(var, t1)), t2) ->  reduction (Pfix (s, (substitution t1 var t2))) ((var, t2)::acc)  
+  (*| App(Pfix(s, Abs(var, t1,t3)), t2) ->  reduction (Pfix (s, (substitution t1 var t2)),t3) ((var, t2)::acc)  ((s,t1)::env) *)
   | App (m, n) ->  
-      let m' = reduction m acc in
-      let n' = reduction n acc in
+      let m' = reduction m acc env  in
+      let n' = reduction n acc env  in
       (match m' with 
           |Abs(s, t1) ->App ((substitution t1 s m'), n')
           |_ -> App (m', n'))
-  | Abs (x, m) -> Abs (x, reduction m acc)   (*valeur par defaut pour x *)
-  | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc and  val_2 : pterm = reduction t2 acc in 
+  | Abs (x, m) -> Abs (x, reduction m acc env )   (*valeur par defaut pour x *)
+  | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc env  and  val_2 : pterm = reduction t2 acc  env in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 + val2))
                       |_ ->  raise Echec_reduction)
   |N t1 -> (N t1)
   |Var s -> (Var s)
-  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc and val_2 : pterm = reduction t2 acc in 
+  |Sou(t1, t2) ->  let val_1 : pterm = reduction t1  acc env  and val_2 : pterm = reduction t2 acc env  in 
                     (match (val_1, val_2) with 
                       |((N val1), (N val2)) -> (N(val1 - val2))
                       |_ -> raise Echec_reduction)
   |Hd t1 -> (match t1 with 
               |ListP(Vide)-> ListP(Vide)
-              |ListP(Cons(fst,_)) ->reduction fst acc
+              |ListP(Cons(fst,_)) ->reduction fst acc env 
               |_ -> raise Echec_reduction)
 
   |Tail t1 -> (match t1 with 
               |ListP(Vide)-> ListP(Vide)
               |ListP(Cons(_,rest)) -> match rest with 
                                     |Vide -> ListP(Vide)
-                                    |Cons(l1,ls) -> ListP(Cons ((reduction l1 acc), (map_list ls acc reduction)));
+                                    |Cons(l1,ls) -> ListP(Cons ((reduction l1 acc env ), (map_list ls acc   reduction)));
               |_ -> raise Echec_reduction)
 
-  |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
+  |Izte (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc env)in 
                           (match cond_reduced with 
-                              | (N 0)-> (reduction t1 acc)
+                              | (N 0)-> (reduction t1 acc env)
                               | Var s -> (match find_in_memo  s acc with
-                                             |(N 0) -> (reduction t1 acc)
-                                             |_  -> print_endline(print_term t2);(reduction t2 acc)  )
-                              | _ -> (reduction t2 acc))
-  |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc)in 
+                                             |(N 0) -> (reduction t1 acc env )
+                                             |_  -> print_endline(print_term t2);(reduction t2 acc env)  )
+                              | _ -> (reduction t2 acc env ))
+  |Iete (cond, t1, t2) -> let cond_reduced : pterm=(reduction cond acc env)in 
                           (match cond_reduced with 
-                          | ListP(Vide) -> (reduction t1 acc)
-                          | ListP(_) -> (reduction t2 acc)
+                          | ListP(Vide) -> (reduction t1 acc env)
+                          | ListP(_) -> (reduction t2 acc env )
                           | _ -> raise Echec_reduction)
-  |Pfix(s ,t1) -> reduction   (substitution t1 s (Pfix(s ,t1))) acc
+  |Pfix(s ,t1,t2) ->  (match t1 with 
+                  |Abs(var, corps) -> substitution corps var (Pfix(s ,t1,t2)) 
+                  |_ -> raise Echec_reduction)
   | ListP t1 -> (match t1 with 
                 |Vide -> ListP(Vide)
-                |Cons (l1, ls) -> ListP(Cons (reduction l1 acc, map_list ls acc reduction));)
-  |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc in 
+                |Cons (l1, ls) -> ListP(Cons (reduction l1 acc env, map_list ls acc reduction));)
+  |Let (s, t1, t2) ->(let reduce_t1 =reduction t1 acc env in 
                 (match reduce_t1 with 
-                  |Ref f -> (reduction t2 ((s,f)::acc))
+                  |Ref f -> (reduction t2 ((s,f)::acc)) env
                   |Abs(s,n) -> (match t2 with 
-                                |App(val1, val2)->print_endline("jeuis la 1");  substitution (Abs(s,n)) s val2
-                                |_->print_endline("jeuis la 2"); raise Echec_reduction)
-                  |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc)) s reduce_t1)) ((s, reduce_t1)::acc)) )
-  |Ref t1 -> let e_reduction:pterm = reduction t1 acc in 
+                                |App(val1, val2)->  substitution (Abs(s,n)) s val2
+                                |_-> raise Echec_reduction)
+                  |_ ->reduction((substitution (reduction t2  ((s, reduce_t1)::acc) env) s reduce_t1) ) ((s, reduce_t1)::acc) env) ) 
+  |Ref t1 -> let e_reduction:pterm = reduction t1 acc  env in 
               Ref(e_reduction) 
-  |DeRef e -> let e_reduction : pterm =(reduction e acc) in 
+  |DeRef e -> let e_reduction : pterm =(reduction e acc) env  in 
               (match e_reduction with 
                 |Ref e -> e
                 |Var x_reduction->(match find_in_memo  x_reduction acc with
                             |value -> value )
-                |_ -> print_endline("jeuis la 4"); raise Echec_reduction)
-  |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc)  in
+                |_ ->  raise Echec_reduction)
+  |Assign (t1, t2) -> let e2: pterm= (reduction t2 acc env)  in
                      (match t1 with 
                         |Ref p ->   (Assign(t1, t2)) 
                         |Var x -> Assign (t1, t2) 
-                        |_ -> print_endline("jeuis la 5"); raise Echec_reduction)
+                        |_ ->  raise Echec_reduction)
   |Unit -> Unit
   | _ -> t
 
@@ -266,7 +268,7 @@ and substitution terme x nterm=
   | Ref t1 -> Ref (substitution t1 x nterm)
   | DeRef t1 ->DeRef (substitution t1 x nterm)
   | Assign (t1, t2) ->  (Assign(t1, substitution t2 x nterm))
-  |Pfix (s,t1) -> print_endline("je uis la "); Pfix (s, substitution t1 x nterm)
+  |Pfix (s,t1,t2) -> print_endline("je uis la "); Pfix (s, substitution t1 x nterm,t2)
   | _  -> terme
 
 
@@ -282,19 +284,19 @@ let map_liste_gen_equa (l : pterm liste) ty e f =
       (ty, Tliste(Var nhv))::(f l (Var nhv) e)@(aux_map ls (Tliste(Var nhv)) e f)
             in aux_map l ty e f
    
-let rec generalize_types (env : env) (equations ) : env =
-  match equations with
-  | [] -> env
-  | (t1, t2) :: rest ->
-      let generalized_env = generalize_type env t1 t2 in
-      generalize_types generalized_env rest
+let rec generalize_types (env : env) (equations) : env =
+match equations with
+| [] -> env
+| (t1, t2) :: rest ->
+    let generalized_env = generalize_type env t1 t2 in
+    generalize_types generalized_env rest
 
 and generalize_type (env : env) (t1 : ptype) (t2 : ptype) : env =
-  match (t1, t2) with
-  | Var v1, Var v2 when v1 = v2 -> env
-  | Var v, _ -> (v, t2) :: env
-  | _, Var v -> (v, t1) :: env
-  | _ -> env
+match (t1, t2) with
+| Var v1, Var v2 when v1 = v2 -> env
+| Var v, _ -> (v, t2) :: env
+| _, Var v -> (v, t1) :: env
+| _ -> env
 (* return all type variables of t*)
 
 let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
@@ -327,17 +329,20 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
     let cond: equa = genere_equa condition (Tliste(Var (nouvelle_var()))) e in  
     let eq1 : equa =genere_equa t1 (Var nvh1) e and eq2: equa =genere_equa t2 (Var nvh1) e in 
         ((ty, (Arr(Tliste((Var nvh1)), (Var nvh1))))::(cond@eq1@eq2)))
-  |Pfix (s, t1) -> (let nv: string  =  nouvelle_var() in 
-                  (ty, (Var nv))::(genere_equa t1 (Var nv) ((s, Var nv)::e)))
+
+  |Pfix (s, t1,t2) -> (let nv: string  =  nouvelle_var() in 
+                let eq1 : equa = genere_equa t1 ty ((s,(Var nv))::e)  in 
+                let   new_env = generalize_types ((s,(Var nv))::e)  eq1 in
+                let eq2 : equa =  genere_equa t2 ty  (new_env@e) in 
+                (ty, Var(nv))::(eq1@eq2))
 
   |Let (s, e1, e2) -> (let nvh :  string = nouvelle_var() in
-    let var_ptype : ptype = (Var  nvh) in
-    let nvh2 : string = nouvelle_var() in
-      let eq1 : equa = genere_equa e1 (Var nvh) e  in 
-      let   new_env = generalize_types  ((s,(Var nvh))::e)  eq1 in
-          let eq2 : equa =  genere_equa e2 ty  (new_env@e) in 
-              (ty, var_ptype)::(eq1@eq2))  
-
+        let var_ptype : ptype = (Var  nvh) in
+        let nvh2 : string = nouvelle_var() in
+          let eq1 : equa = genere_equa e1 (Var nvh) e  in 
+          let   new_env = generalize_types  ((s,(Var nvh))::e)  eq1 in
+              let eq2 : equa =  genere_equa e2 ty  (new_env@e) in 
+                  (ty, var_ptype)::(eq1@eq2)) 
   |Ref t1-> (let nvh : ptype = (Var (nouvelle_var())) in 
               let  var_type: ptype = (RefT nvh) and eq1 : equa = genere_equa t1 nvh e in 
                 (ty,var_type)::eq1)
@@ -402,12 +407,13 @@ let rec unification (e : equa_zip) (but : string) : ptype =
   | (e1, (Nat, t3)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))     
     (* types à droite pas à gauche : échec *)
   | (e1, (t3, Nat)::e2) -> raise (Echec_unif ("type entier non-unifiable avec "^(print_type t3)))   
+  (*Listes *)
   | (e1,(Tliste t1, Tliste t2)::e2) -> unification(e1,(t1,t2)::e2) but (* Aboubakar Diawara *)
-  (*3.2.1*)
+  (*3.2.1 Forall *)
   | (e1,((Forall(set1, t1), Forall(set2, t2))::e2)) -> unification(e1,(substituion_forall set1 t1, substituion_forall set2 t2)::e2) but 
   | (e1,((t3, Forall(set2, t2))::e2)) -> unification(e1,((substituion_forall set2 t2),t3)::e2) but 
   | (e1,((Forall(set1, t1), t3)::e2)) -> unification(e1,(t3, (substituion_forall set1 t1))::e2) but 
-  (*4.2.1*)
+  (*4.2.1 Reference *)
   | (e1,(RefT t1,RefT t2)::e2) -> unification (e1,(t1,t2)::e2) but
   | (e1,(UnitT ,UnitT )::e2) -> unification (e1,e2) but
 
