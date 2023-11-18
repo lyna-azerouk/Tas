@@ -63,7 +63,7 @@ let ex_assigne : Typeur.pterm =Typeur.Abs("x", Typeur.Assign((Typeur.Var("x"), (
 let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Typeur.Var "f"), Typeur.Ref(Typeur.N 2)))
 let ex_assigne3: Typeur.pterm = Typeur.App(ex_assigne, Typeur.Ref(Typeur.N 2))
 let abs_for_rec = Typeur.Abs("n", Typeur.Izte(Typeur.Var "n", Typeur.N 1, Typeur.Sou(Typeur.App(Typeur.Var "fact", Typeur.Sou(Typeur.Var "n", Typeur.N 1)), Typeur.N 1)))
-let factorial = Typeur.Pfix("fact", abs_for_rec,Typeur.N 0)
+let factorial = Typeur.Pfix("fact", abs_for_rec,Typeur.N 4)
 
 let main () =
   (**
@@ -168,10 +168,6 @@ let main () =
   print_endline(Typeur.print_term ex_assigne2);
   (**print_endline(Typeur.print_term  (Typeur.reduction ex_assigne [])) ;**)
   print_endline(Typeur.inference ex_assigne2);
-  print_endline "======================";
-  (*print_endline(Typeur.print_term recursive_factorial);
-  print_endline(Typeur.print_term  (Typeur.reduction eval_recursive_factorial [] []));
-  print_endline(Typeur.inference   eval_recursive_factorial );*)
   print_endline "======================";
   print_endline(Typeur.print_term factorial);
   print_endline(Typeur.print_term  (Typeur.reduction factorial [] []));
