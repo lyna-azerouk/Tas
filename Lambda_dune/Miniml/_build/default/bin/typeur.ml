@@ -189,7 +189,7 @@ let rec reduction (t: pterm)  acc env : pterm=
       let n' = reduction n acc env  in
       (match m' with 
           |Abs(s, t1) ->App ((substitution t1 s m' acc env ), n')
-          |Var s -> print_endline(print_term  (find_in_memo s env));  print_endline(print_term n'); reduction (App((find_in_memo s env), n')) ((s,n')::acc) env  (* cherche en memoire la fonction et on fait un appel recurssive sur *)
+          |Var s ->  reduction (App((find_in_memo s env), n')) ((s,n')::acc) env  (* cherche en memoire la fonction et on fait un appel recurssive sur *)
           |_ -> App (m', n'))
   | Abs (x, m) -> Abs (x, reduction m acc env )   (*valeur par defaut pour x *)
   | Add(t1, t2) -> let val_1 : pterm = reduction t1 acc env  and  val_2 : pterm = reduction t2 acc  env in 

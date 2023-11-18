@@ -169,10 +169,6 @@ let main () =
   (**print_endline(Typeur.print_term  (Typeur.reduction ex_assigne [])) ;**)
   print_endline(Typeur.inference ex_assigne2);
   print_endline "======================";
-  (*print_endline(Typeur.print_term recursive_factorial);
-  print_endline(Typeur.print_term  (Typeur.reduction eval_recursive_factorial [] []));
-  print_endline(Typeur.inference   eval_recursive_factorial );*)
-  print_endline "======================";
   print_endline(Typeur.print_term factorial);
   print_endline(Typeur.print_term  (Typeur.reduction factorial [] []));
   print_endline(Typeur.inference   factorial );
