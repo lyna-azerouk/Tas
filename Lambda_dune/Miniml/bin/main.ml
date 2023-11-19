@@ -34,10 +34,13 @@ let convertie_bis = Typeur.alpha_conv_bis ex_id  []
 let exemple = Typeur.alpha_conv_bis ex_s []
 let exemeple_reduction : Typeur.pterm = Typeur.reduction chat_exemple [] []
 let ex_sous : Typeur.pterm = Typeur.Sou((Typeur.N 3), (Typeur.N 3))
-let ex_listP1 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons ((N 0), Typeur.Vide)))
+let ex_listP1 : Typeur.pterm = Typeur.ListP (Typeur.Cons(N 3, Typeur.Cons ((N 0), Typeur.Vide)))
 let ex_listP2 : Typeur.pterm = Typeur.ListP (Typeur.Cons((N 0), Typeur.Cons ((N 0), Typeur.Vide)))
 let ex_listP3 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons (ex_id, Typeur.Vide)))
 let ex_listP4 : Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_sous, Typeur.Cons (ex_sous, Typeur.Vide)))
+let ex_listP5 : Typeur.pterm = Typeur.ListP (Typeur.Cons((N 0), Typeur.Cons ((N 0), Typeur.Vide)))
+let ex_listP6: Typeur.pterm = Typeur.ListP (Typeur.Cons(ex_id, Typeur.Cons ((N 0), Typeur.Vide)))
+
 let ex_hd: Typeur.pterm = Typeur.Hd(ex_listP1)
 let ex_hd_reduced : Typeur.pterm =Typeur.reduction ex_hd [][]
 let ex_tail: Typeur.pterm =Typeur.Tail(ex_listP1)
@@ -63,7 +66,10 @@ let ex_assigne : Typeur.pterm =Typeur.Abs("x", Typeur.Assign((Typeur.Var("x"), (
 let ex_assigne2: Typeur.pterm = Typeur.Let("f", ex_assigne, Typeur.App((Typeur.Var "f"), Typeur.Ref(Typeur.N 2)))
 let ex_assigne3: Typeur.pterm = Typeur.App(ex_assigne, Typeur.Ref(Typeur.N 2))
 let abs_for_rec = Typeur.Abs("n", Typeur.Izte(Typeur.Var "n", Typeur.N 1, Typeur.Sou(Typeur.App(Typeur.Var "fact", Typeur.Sou(Typeur.Var "n", Typeur.N 1)), Typeur.N 1)))
+let abs_for_rec_bis = Typeur.Abs("n", Typeur.Izte(Typeur.Var "n", ex_listP1, Typeur.Sou(Typeur.App(Typeur.Var "fact", Typeur.Sou(Typeur.Var "n", Typeur.N 1)), Typeur.N 1)))
 let factorial = Typeur.Pfix("fact", abs_for_rec,Typeur.N 4)
+let factorial_bis = Typeur.Pfix("fact", abs_for_rec_bis,Typeur.N 4)
+
 
 let main () =
   (**
@@ -83,9 +89,7 @@ let main () =
   print_endline "======================";
   print_endline (Typeur.print_term chat_exemple);
   print_endline (Typeur.print_term exemeple_reduction );
-  print_endline "======================";
-  print_endline (Typeur.print_term ex_hd);
-  prerr_endline (Typeur.print_term ex_hd_reduced);
+
   print_endline "======================";
   print_endline (Typeur.print_term ex_tail);
   prerr_endline (Typeur.print_term ex_tail_reduce);
@@ -101,7 +105,6 @@ let main () =
   print_endline "======================";
   print_endline (Typeur.print_term ex_let_ab);
   print_endline (Typeur.print_term (Typeur.reduction ex_let_ab [] []));
-  print_endline "==========TYPEUR============";
   (*print_endline (Typeur.print_term ex_omega);*)
   (*print_endline((Typeur.inference ex_omega));   Boucle infinie OK*)
   print_endline "======================";
@@ -124,6 +127,15 @@ let main () =
   print_endline "======================";
   print_endline (Typeur.print_term ex_listP4);
   print_endline (Typeur.inference ex_listP4);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP5);
+  print_endline (Typeur.inference ex_listP5);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_listP6);
+  print_endline (Typeur.inference ex_listP6);
+  print_endline "======================";
+  print_endline (Typeur.print_term ex_hd);
+  prerr_endline (Typeur.print_term ex_hd_reduced);
   print_endline "======================";
   print_endline (Typeur.print_term ex_hd);
   print_endline (Typeur.inference ex_hd);
@@ -172,8 +184,9 @@ let main () =
   print_endline(Typeur.print_term factorial);
   print_endline(Typeur.print_term  (Typeur.reduction factorial [] []));
   print_endline(Typeur.inference   factorial );
-  print_endline "======================"
-
+  print_endline "======================";
+  print_endline(Typeur.print_term factorial_bis);
+  print_endline(Typeur.inference   factorial_bis )
 
 
  
