@@ -8,6 +8,14 @@ Ce projet est divisé en trois parties principales :
 
 Le fichier `typeur` rassemble ces différentes parties pour assurer le fonctionnement global du projet.
 
+## Pour éxécuté le projet Dans le sous répértoire  Miniml : Lambda_dune/Miniml 
+````
+dune build 
+````
+````
+dune exec Miniml 
+````
+
 ## Structure du Projet
 - `syntaxe_eval/` : Contient les fichiers liés à la syntaxe et à la sémantique.
 - `typage/` : Réunit les composants concernant le typage.
@@ -17,11 +25,3 @@ Le fichier `typeur` rassemble ces différentes parties pour assurer le fonctionn
 - `typeur.ml` : Fichier principal rassemblant les différents parties du projet.
 - `Main/` : Répertoire contenant les fichiers de tests pour chaque partie du projet.
 
-
-````
-dune build 
-``
-
-````
-dune exec Miniml 
-``
