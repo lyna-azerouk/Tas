@@ -255,7 +255,7 @@ let rec reduction (t: pterm)  acc env : pterm=
   |Unit -> Unit
   | _ -> t
 
-(*substitution de la variable x par le term "nterm"*)
+(*Substitution de la variable x par le term "nterm"*)
 and substitution terme x nterm  acc env =
   match terme with
   | Var y when y = x ->   nterm
@@ -319,7 +319,9 @@ let rec genere_equa (te : pterm) (ty : ptype) (e : env) : equa =
   |Tail t1 -> let nhv : string = nouvelle_var() in 
     let eq : equa=genere_equa t1 (Tliste (Var nhv)) e  in 
     (ty, (Tliste (Var nhv)))::eq
+
   |ListP l-> map_liste_gen_equa  l ty e genere_equa
+  
   |Hd t1 -> let nhv : string = nouvelle_var() in 
       let eq : equa=genere_equa t1  (Tliste(Var nhv)) e in 
         (ty , (Var nhv))::eq
