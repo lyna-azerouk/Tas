@@ -17,3 +17,11 @@ Le fichier `typeur` rassemble ces différentes parties pour assurer le fonctionn
 - `typeur.ml` : Fichier principal rassemblant les différents parties du projet.
 - `Main/` : Répertoire contenant les fichiers de tests pour chaque partie du projet.
 
+
+````
+dune build 
+``
+
+````
+dune exec Miniml 
+``
